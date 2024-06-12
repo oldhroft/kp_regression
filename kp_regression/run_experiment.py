@@ -1,11 +1,13 @@
 import click
 import os
+from numpy import savez_compressed
 
 from kp_regression.config import Config
-from kp_regression.utils import safe_mkdir, add_unique_suffix
+from kp_regression.utils import safe_mkdir, add_unique_suffix, dump_json
 from kp_regression.logging_utils import config_logger
 from kp_regression.models_zoo import MODEL_FACTORY
 from kp_regression.data import DATA_FACTORY
+from kp_regression.metrics import calculate_regression_metrics
 
 import logging
 
@@ -22,11 +24,28 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
     config = Config.from_file(config_path)
 
-    # data_builder = DATA_FACTORY.get(config.data_config.pipe_name)
+    data_builder = DATA_FACTORY.get(config.data_config.pipe_name)
 
-    # X, y = data_builder(config.data_config.input_path, **config.data_config.pipe_params)
+    if data_builder is None:
+        raise ValueError("No such data pipeline %s", config.data_config.pipe_name)
+
+    data = data_builder(
+        input_path=config.data_config.input_path,
+        save_data=config.data_config.save_file,
+        pipe_params=config.data_config.pipe_params,
+        exp_dir=exp_folder,
+    )
+
+    if config.data_config.use_val:
+        data_train, data_test, data_val = data.get_train_test_val(
+            **config.data_config.split_params
+        )
+    else:
+        data_train, data_test = data.get_train_test(**config.data_config.split_params)
+        data_val = None
 
     for model_cfg in config.models:
+        logger.info("=" * 50)
         logger.info("Model config %s", model_cfg)
 
         model_dir = os.path.join(exp_folder, add_unique_suffix(model_cfg.model_name))
@@ -42,7 +61,38 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
             model_params=model_cfg.model_config,
             model_dir=dir,
         )
+        logger.info("Training model %s", model_cfg.model_type)
+        if config.data_config.use_val:
+            model.train(data_train.X, data_train.y, data_val.X, data_val.y)
+        else:
+            model.train(data_train.X, data_train.y)
 
         save_path = os.path.join(model_dir, "model")
-        logger.info("Saving model %s", save_path)
+        logger.info("Saving model to %s", save_path)
         model.save(save_path)
+
+        logger.info("Predicting model %s", model_cfg.model_type)
+
+        preds = model.predict(X=data_test.X)
+
+        if config.data_config.save_preds:
+            logger.info("Saving preds")
+            preds_path = os.path.join(model_dir, "preds.npz")
+            savez_compressed(preds_path, preds=preds)
+
+        metrics = calculate_regression_metrics(
+            preds, y_true=data_test.y, meta=data_test.meta
+        )
+
+        dump_json(metrics, os.path.join(model_dir, "metrics.json"))
+
+        for level, metric_dict in enumerate(metrics):
+            logger.info(
+                "Model %s, Horizon %s, metric %s = %s",
+                model_cfg.model_type,
+                level,
+                "MSE",
+                metric_dict["MSE"],
+            )
+
+        

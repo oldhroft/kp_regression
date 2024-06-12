@@ -21,7 +21,10 @@ class DataConfig:
     input_path: str
     pipe_name: str
     pipe_params: dict
+    split_params: dict
     save_file: bool = False
+    save_preds: bool = False
+    use_val: bool = False
 
 
 @dataclass

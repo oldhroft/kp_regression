@@ -12,13 +12,13 @@ from sklearn.model_selection import (
 from sklearn.utils.validation import check_is_fitted
 from sklearn.exceptions import NotFittedError
 
-from sklearn.multioutput import MultiOutputClassifier
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
 
 from joblib import dump
 import os
 
-from kp_regression.utils import dump_json
+from kp_regression.utils import dump_json, safe_mkdir
 
 import logging
 
@@ -75,19 +75,20 @@ class SklearnMultiOutputModel(BaseModel):
     def build(self) -> None:
         self.model = self.get_model()
         self.model.set_params(**self.model_params)
-        self.model = MultiOutputClassifier(self.model)
+        self.model = MultiOutputRegressor(self.model)
 
     def save(self, file_path: str) -> None:
-
-        try: 
+        try:
             check_is_fitted(self.model)
         except NotFittedError:
             logging.warn("Model is not fiited, not saving")
             return
         
+        safe_mkdir(file_path)
+
         for i, model in enumerate(self.model.estimators_):
 
-            path = os.path_join(file_path,f"{i}.sav")
+            path = os.path.join(file_path, f"{i}.sav")
             dump(self.model, path)
 
     def train(

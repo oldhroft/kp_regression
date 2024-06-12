@@ -3,10 +3,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import Ridge, Lasso
-from sklearn.multioutput import MultiOutputRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 
+from kp_regression.models_zoo.column_estimator import ColumnEstimator
 from kp_regression.base_model import SklearnMultiOutputModel
 
 
@@ -35,4 +35,10 @@ class RidgeClass(SklearnMultiOutputModel):
 
 class LassoClass(SklearnMultiOutputModel):
     def get_model(self) -> None:
-        self.model = Lasso()
+        return Lasso()
+
+
+class ColumnEstimatorClass(SklearnMultiOutputModel):
+
+    def get_model(self) -> BaseEstimator:
+        return ColumnEstimator()

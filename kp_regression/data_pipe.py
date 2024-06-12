@@ -6,10 +6,49 @@ import os
 from pandas import DataFrame, read_csv
 
 from numpy import savez_compressed
+from dataclasses import dataclass
 
 from abc import ABC, abstractmethod
 
-from kp_regression.utils import dump_json
+from kp_regression.utils import dump_json, safe_mkdir
+
+import logging
+
+
+@dataclass
+class Dataset:
+    X: NDArray
+    y: NDArray
+    feature_names: T.List[str]
+    target_names: T.List[str]
+    meta: DataFrame
+
+    def save(self, path: str, names_only: bool = True):
+
+        safe_mkdir(path)
+
+        features_path = os.path.join(path, "features.json")
+        target_path = os.path.join(path, "targets.json")
+        dump_json(self.feature_names, features_path)
+        dump_json(self.target_names, target_path)
+
+        if not names_only:
+            out_path = os.path.join(path, "data.npz")
+            savez_compressed(out_path, X=self.X, y=self.y)
+
+            meta_path = os.path.join(path, "meta.csv")
+            self.meta.to_csv(meta_path, index=None)
+
+    def log(self, name):
+        logging.info(
+            "Dataset %s, X shape = %s, y shape = %s", name, self.X.shape, self.y.shape
+        )
+        logging.info(
+            "Dataset %s, Min dttm %s, Max dttm %s",
+            name,
+            self.meta.dttm.dt.date.min(),
+            self.meta.dttm.dt.date.max(),
+        )
 
 
 class BaseData(ABC):
@@ -23,24 +62,10 @@ class BaseData(ABC):
         self.exp_dir = exp_dir
 
     @abstractmethod
-    def get_train_test(
-        self, **kwargs
-    ) -> T.Tuple[NDArray, NDArray, NDArray, NDArray]: ...
+    def get_train_test(self, **kwargs) -> T.Tuple[Dataset, Dataset]: ...
 
     @abstractmethod
-    def get_train_test_val(
-        self, **kwargs
-    ) -> T.Tuple[NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]: ...
-
-    @abstractmethod
-    def get_features(self) -> T.List[str]: ...
-
-    def get_data(self, val: bool, **kwargs) -> T.Any:
-
-        if val:
-            return self.get_train_test_val(**kwargs)
-        else:
-            return self.get_train_test(**kwargs)
+    def get_train_test_val(self, **kwargs) -> T.Tuple[Dataset, Dataset, Dataset]: ...
 
 
 def read_data(path: str) -> DataFrame:
@@ -53,7 +78,11 @@ def read_data(path: str) -> DataFrame:
         axis=1,
     )
 
-    return data.drop("Unnamed: 62", axis=1)
+    return (
+        data.drop("Unnamed: 62", axis=1)
+        .sort_values(by="dttm")
+        .reset_index(drop=True)
+    )
 
 
 class KpData(BaseData):
@@ -62,11 +91,11 @@ class KpData(BaseData):
         self.raw_data = read_data(self.input_path)
 
     @abstractmethod
-    def process_data(
-        self, df: DataFrame, params: dict
-    ) -> T.Tuple[T.List[str], NDArray, NDArray]: ...
+    def process_data(self, df: DataFrame, params: dict) -> Dataset: ...
 
-    def get_train_test(self, year_test) -> T.Tuple[NDArray, NDArray, NDArray, NDArray]:
+    def get_train_test(self, year_test, year_val) -> T.Tuple[Dataset, Dataset]:
+
+        self._read_data()
 
         raw_data_train = self.raw_data[self.raw_data.year < year_test].reset_index(
             drop=True
@@ -75,65 +104,51 @@ class KpData(BaseData):
             drop=True
         )
 
-        features, X_train, y_train = self.process_data(
-            raw_data_train, params=self.pipe_params
+        data_train = self.process_data(raw_data_train, **self.pipe_params)
+        data_train.log("Train")
+        data_test = self.process_data(raw_data_test, **self.pipe_params)
+        data_test.log("Test")
+
+        data_train.save(
+            os.path.join(self.exp_dir, "data_train"), names_only=not self.save_data
         )
-        _, X_test, y_test = self.process_data(raw_data_test, params=self.pipe_params)
+        data_test.save(
+            os.path.join(self.exp_dir, "data_test"), names_only=not self.save_data
+        )
 
-        self.features = features
-
-        features_path = os.path.join(self.exp_dir, "features.json")
-
-        dump_json(self.features, features_path)
-
-        if self.save_data:
-            file_path = os.path.join(self.exp_dir, "data_train_test.npz")
-            savez_compressed(
-                file_path,
-                X_train=X_train,
-                y_train=y_train,
-                X_test=X_test,
-                y_test=y_test,
-            )
-
-        return X_train, y_train, X_test, y_test
+        return data_train, data_test
 
     def get_train_test_val(
         self, year_test, year_val
-    ) -> T.Tuple[NDArray, NDArray, NDArray, NDArray]:
+    ) -> T.Tuple[Dataset, Dataset, Dataset]:
+
+        self._read_data()
 
         raw_data_train = self.raw_data[self.raw_data.year < year_val].reset_index(
             drop=True
         )
         raw_data_val = self.raw_data[
-            (self.raw_data.year <= year_val) & (self.raw_data.year < year_test)
+            (self.raw_data.year >= year_val) & (self.raw_data.year < year_test)
         ].reset_index(drop=True)
         raw_data_test = self.raw_data[(self.raw_data.year >= year_test)].reset_index(
             drop=True
         )
 
-        features, X_train, y_train = self.process_data(
-            raw_data_train, params=self.pipe_params
+        data_train = self.process_data(raw_data_train, **self.pipe_params)
+        data_train.log("Train")
+        data_test = self.process_data(raw_data_test, **self.pipe_params)
+        data_test.log("Test")
+        data_val = self.process_data(raw_data_val, **self.pipe_params)
+        data_val.log("Val")
+
+        data_train.save(
+            os.path.join(self.exp_dir, "data_train"), names_only=not self.save_data
         )
-        _, X_test, y_test = self.process_data(raw_data_test, params=self.pipe_params)
-        _, X_val, y_val = self.process_data(raw_data_val, params=self.pipe_params)
+        data_test.save(
+            os.path.join(self.exp_dir, "data_test"), names_only=not self.save_data
+        )
+        data_val.save(
+            os.path.join(self.exp_dir, "data_val"), names_only=not self.save_data
+        )
 
-        self.features = features
-
-        features_path = os.path.join(self.exp_dir, "features.json")
-
-        dump_json(self.features, features_path)
-
-        if self.save_data:
-            file_path = os.path.join(self.exp_dir, "data_train_test_val.npz")
-            savez_compressed(
-                file_path,
-                X_train=X_train,
-                y_train=y_train,
-                X_test=X_test,
-                y_test=y_test,
-                X_val=X_val,
-                y_val=y_val,
-            )
-
-        return X_train, y_train, X_test, y_test, X_val, y_val
+        return data_train, data_test, data_val
