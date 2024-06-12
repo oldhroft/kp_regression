@@ -11,6 +11,7 @@
 *.npz
 .DS_Store
 experiments/*
+catboost_info/*
 
 
 # Byte-compiled / optimized / DLL files
