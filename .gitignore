@@ -10,6 +10,7 @@
 *.sav
 *.npz
 .DS_Store
+experiments/*
 
 
 # Byte-compiled / optimized / DLL files
