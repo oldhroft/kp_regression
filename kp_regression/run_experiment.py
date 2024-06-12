@@ -59,8 +59,13 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
             shape=None,
             features=None,
             model_params=model_cfg.model_config,
-            model_dir=dir,
+            model_dir=model_dir,
         )
+
+        if model_cfg.use_cv:
+            logger.info("Performing CV for model %s", model_cfg.model_type)
+            model.cv(model_cfg.cv_config, data_train.X, data_train.y)
+
         logger.info("Training model %s", model_cfg.model_type)
         if config.data_config.use_val:
             model.train(data_train.X, data_train.y, data_val.X, data_val.y)

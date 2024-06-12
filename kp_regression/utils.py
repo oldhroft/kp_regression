@@ -6,8 +6,16 @@ import yaml
 import datetime
 
 from uuid import uuid4
+
+from numpy import ndarray
 from sklearn.base import BaseEstimator
 from sklearn.pipeline import Pipeline
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 
 def safe_mkdir(name: str) -> None:
@@ -34,7 +42,7 @@ def dump_yaml(obj: T.Any, path: str) -> None:
 
 def dump_json(obj: T.Any, path: str) -> None:
     with open(path, encoding="utf-8", mode="w") as file:
-        json.dump(obj, file)
+        json.dump(obj, file, cls=NumpyEncoder)
 
 
 def add_unique_suffix(name: str, add_date: bool = True, add_uuid: bool = True) -> str:

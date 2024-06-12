@@ -10,6 +10,7 @@ class ModelConfig:
     model_type: str
     model_config: dict
     cv_config: dict
+    use_cv: bool
 
     @classmethod
     def from_dict(cls, dct: dict):
