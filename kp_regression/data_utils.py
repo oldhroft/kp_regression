@@ -18,7 +18,7 @@ def add_lags(
     lags: int = 1,
     trim: bool = False,
     suffix_name: str = None,
-) -> T.Tuple[DataFrame.T.List[str]]:
+) -> T.Tuple[DataFrame, T.List[str]]:
     if suffix_name is None:
         suffix_name = "lead" if forward else "lag"
 

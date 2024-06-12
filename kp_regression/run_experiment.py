@@ -5,6 +5,7 @@ from kp_regression.config import Config
 from kp_regression.utils import safe_mkdir, add_unique_suffix
 from kp_regression.logging_utils import config_logger
 from kp_regression.models_zoo import MODEL_FACTORY
+from kp_regression.data import DATA_FACTORY
 
 import logging
 
@@ -20,6 +21,10 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
     logger.info("Starting experiment in %s", exp_folder)
 
     config = Config.from_file(config_path)
+
+    # data_builder = DATA_FACTORY.get(config.data_config.pipe_name)
+
+    # X, y = data_builder(config.data_config.input_path, **config.data_config.pipe_params)
 
     for model_cfg in config.models:
         logger.info("Model config %s", model_cfg)
@@ -38,6 +43,6 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
             model_dir=dir,
         )
 
-        save_path = os.path.join(model_dir, "model.sav")
+        save_path = os.path.join(model_dir, "model")
         logger.info("Saving model %s", save_path)
         model.save(save_path)

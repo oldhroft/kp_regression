@@ -3,28 +3,29 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import Ridge, Lasso
+from sklearn.multioutput import MultiOutputRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 
-from kp_regression.base_model import SklearnModel
+from kp_regression.base_model import SklearnMultiOutputModel
 
 
-class LGBMRegressorClass(SklearnModel):
+class LGBMRegressorClass(SklearnMultiOutputModel):
     def get_model(self) -> BaseEstimator:
         return LGBMRegressor()
 
 
-class CatBoostRegressorClass(SklearnModel):
+class CatBoostRegressorClass(SklearnMultiOutputModel):
     def get_model(self) -> BaseEstimator:
         return CatBoostRegressor()
 
 
-class RandomForestRegressorClass(SklearnModel):
+class RandomForestRegressorClass(SklearnMultiOutputModel):
     def get_model(self) -> BaseEstimator:
         return RandomForestRegressor()
 
 
-class RidgeClass(SklearnModel):
+class RidgeClass(SklearnMultiOutputModel):
     def get_model(self) -> None:
 
         steps = [("scaler", StandardScaler()), ("ridge", Ridge())]
@@ -32,6 +33,6 @@ class RidgeClass(SklearnModel):
         return Pipeline(steps=steps)
 
 
-class LassoClass(SklearnModel):
+class LassoClass(SklearnMultiOutputModel):
     def get_model(self) -> None:
         self.model = Lasso()

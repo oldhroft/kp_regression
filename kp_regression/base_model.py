@@ -9,12 +9,18 @@ from sklearn.model_selection import (
     KFold,
     TimeSeriesSplit,
 )
+from sklearn.utils.validation import check_is_fitted
+from sklearn.exceptions import NotFittedError
+
+from sklearn.multioutput import MultiOutputClassifier
 from sklearn.base import BaseEstimator
 
 from joblib import dump
 import os
 
 from kp_regression.utils import dump_json
+
+import logging
 
 
 class BaseModel(ABC):
@@ -39,7 +45,13 @@ class BaseModel(ABC):
         raise NotImplemented("Method not implemented")
 
     @abstractmethod
-    def train(self, X: NDArray, y: NDArray) -> None:
+    def train(
+        self,
+        X: NDArray,
+        y: NDArray,
+        X_val: T.Optional[NDArray] = None,
+        y_val: T.Optional[NDArray] = None,
+    ) -> None:
         raise NotImplemented("Method not implemented")
 
     @abstractmethod
@@ -55,7 +67,7 @@ class BaseModel(ABC):
         raise NotImplemented("Method not implemented")
 
 
-class SklearnModel(BaseModel):
+class SklearnMultiOutputModel(BaseModel):
 
     @abstractmethod
     def get_model(self) -> BaseEstimator: ...
@@ -63,11 +75,28 @@ class SklearnModel(BaseModel):
     def build(self) -> None:
         self.model = self.get_model()
         self.model.set_params(**self.model_params)
+        self.model = MultiOutputClassifier(self.model)
 
     def save(self, file_path: str) -> None:
-        dump(self.model, file_path)
 
-    def train(self, X: NDArray, y: NDArray):
+        try: 
+            check_is_fitted(self.model)
+        except NotFittedError:
+            logging.warn("Model is not fiited, not saving")
+            return
+        
+        for i, model in enumerate(self.model.estimators_):
+
+            path = os.path_join(file_path,f"{i}.sav")
+            dump(self.model, path)
+
+    def train(
+        self,
+        X: NDArray,
+        y: NDArray,
+        X_val: T.Optional[NDArray] = None,
+        y_val: T.Optional[NDArray] = None,
+    ):
         self.model.fit(X, y)
 
     def predict(self, X: NDArray) -> NDArray:
