@@ -65,10 +65,7 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         )
         builder = MODEL_FACTORY[model_cfg.model_type]
         model_dir = os.path.join(exp_folder, add_unique_suffix(model_cfg.model_name))
-        logger.info("Creating model dir %s", model_dir)
-        safe_mkdir(model_dir)
         model_dirs[model_cfg.model_name] = model_dir
-
 
         built_models[model_cfg.model_name] = builder(
             shape=data_train.X.shape,
@@ -81,6 +78,8 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         logger.info("=" * 50)
         logger.info("Model config %s", model_cfg)
         model_dir = model_dirs[model_cfg.model_name]
+        logger.info("Creating model dir %s", model_dir)
+        safe_mkdir(model_dir)
 
         logger.info(
             "Getting model %s of type %s", model_cfg.model_name, model_cfg.model_type

@@ -79,7 +79,7 @@ def read_data(path: str) -> DataFrame:
     )
 
     return (
-        data.drop("Unnamed: 62", axis=1)
+        data.drop("Unnamed: 62", axis=1, errors="ignore")
         .sort_values(by="dttm")
         .reset_index(drop=True)
     )
