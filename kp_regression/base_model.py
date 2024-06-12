@@ -18,7 +18,7 @@ from sklearn.base import BaseEstimator
 from joblib import dump
 import os
 
-from kp_regression.utils import dump_json, safe_mkdir
+from kp_regression.utils import dump_json, safe_mkdir, serialize_params
 
 import logging
 
@@ -89,7 +89,12 @@ class SklearnMultiOutputModel(BaseModel):
         for i, model in enumerate(self.model.estimators_):
 
             path = os.path.join(file_path, f"{i}.sav")
-            dump(self.model, path)
+            dump(model, path)
+
+
+        params_path = os.path.join(file_path, "params.json")
+        
+        dump_json(serialize_params(self.model.estimators_[0]), params_path)
 
     def train(
         self,
@@ -121,5 +126,4 @@ class SklearnMultiOutputModel(BaseModel):
         self.model = self.gcv.best_estimator_
 
         results_path = os.path.join(self.model_dir, "cv_results.json")
-
-        dump_json(self.model, results_path)
+        dump_json(self.gcv.cv_results_, results_path)

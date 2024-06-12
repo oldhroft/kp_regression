@@ -6,6 +6,8 @@ import yaml
 import datetime
 
 from uuid import uuid4
+from sklearn.base import BaseEstimator
+from sklearn.pipeline import Pipeline
 
 
 def safe_mkdir(name: str) -> None:
@@ -48,3 +50,16 @@ def add_unique_suffix(name: str, add_date: bool = True, add_uuid: bool = True) -
         return f"{name}_{uuid}"
     else:
         return f"{name}_{add_date}"
+
+
+def serialize_params(model: BaseEstimator) -> T.List[dict]:
+    result = []
+    if isinstance(model, Pipeline):
+
+        for key, value in model.named_steps.items():
+            result.append({"model": key, "params": value.get_params()})
+    else:
+
+        result.append({"model": "model", "params": model.get_params()})
+
+    return result
