@@ -1,3 +1,5 @@
+import typing as T
+
 import click
 import os
 from numpy import savez_compressed
@@ -6,6 +8,7 @@ from kp_regression.config import Config
 from kp_regression.utils import safe_mkdir, add_unique_suffix, dump_json
 from kp_regression.logging_utils import config_logger
 from kp_regression.models_zoo import MODEL_FACTORY
+from kp_regression.base_model import BaseModel
 from kp_regression.data import DATA_FACTORY
 from kp_regression.metrics import calculate_regression_metrics
 
@@ -14,6 +17,11 @@ import logging
 logger = logging.getLogger()
 
 
+@click.command()
+@click.option("--config_path", help="Path to config", type=click.STRING, required=True)
+@click.option(
+    "--exp_folder", help="Path to exp folder", type=click.STRING, required=True
+)
 def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
     safe_mkdir(exp_folder)
@@ -44,23 +52,40 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         data_train, data_test = data.get_train_test(**config.data_config.split_params)
         data_val = None
 
+    logger.info("Verifying building from config...")
+
+    built_models: T.Dict[str, BaseModel] = {}
+    model_dirs: T.Dict[str, str] = {}
+
+    # Build all models first to fast fail on errors
     for model_cfg in config.models:
-        logger.info("=" * 50)
-        logger.info("Model config %s", model_cfg)
-
+        
+        logger.info(
+            "Building model %s of %s", model_cfg.model_name, model_cfg.model_type
+        )
+        builder = MODEL_FACTORY[model_cfg.model_type]
         model_dir = os.path.join(exp_folder, add_unique_suffix(model_cfg.model_name))
-
         logger.info("Creating model dir %s", model_dir)
         safe_mkdir(model_dir)
+        model_dirs[model_cfg.model_name] = model_dir
 
-        builder = MODEL_FACTORY[model_cfg.model_type]
-        logger.info("Building model %s", model_cfg.model_type)
-        model = builder(
-            shape=None,
-            features=None,
+
+        built_models[model_cfg.model_name] = builder(
+            shape=data_train.X.shape,
+            features=data_train.feature_names,
             model_params=model_cfg.model_config,
             model_dir=model_dir,
         )
+
+    for model_cfg in config.models:
+        logger.info("=" * 50)
+        logger.info("Model config %s", model_cfg)
+        model_dir = model_dirs[model_cfg.model_name]
+
+        logger.info(
+            "Getting model %s of type %s", model_cfg.model_name, model_cfg.model_type
+        )
+        model = built_models[model_cfg.model_name]
 
         if model_cfg.use_cv:
             logger.info("Performing CV for model %s", model_cfg.model_type)
@@ -99,5 +124,3 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
                 "MSE",
                 metric_dict["MSE"],
             )
-
-        
