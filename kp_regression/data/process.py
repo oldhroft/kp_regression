@@ -128,7 +128,7 @@ def process_data_standard(
     )
 
     result_features = (
-        features_other + features_h + features_h_list + ["Kp"] + features_3h_list + flgs
+        ["Kp"] + features_other + features_h + features_h_list + features_3h_list + flgs
     )
 
     return Dataset(

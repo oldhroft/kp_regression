@@ -9,4 +9,5 @@ MODEL_FACTORY: T.Dict[str, T.Type[BaseModel]] = {
     "ridge_regressor": RidgeClass,
     "lasso_regressor": LassoClass,
     "rf_regressor": RandomForestRegressorClass,
+    "column_estimator": ColumnEstimatorClass
 }

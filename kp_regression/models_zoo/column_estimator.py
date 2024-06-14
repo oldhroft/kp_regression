@@ -9,3 +9,6 @@ class ColumnEstimator(RegressorMixin, BaseEstimator):
     def fit(self, X: NDArray, y: NDArray):
         self.is_fitted_ = True
         return self
+
+    def predict(self, X: NDArray) -> NDArray:
+        return X[:, self.column_idx]
