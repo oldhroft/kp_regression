@@ -13,7 +13,12 @@ def process_data_standard(
     features_h: list,
     features_other: list,
     n_targets: int,
+    hour_type: T.Optional[str] = None,
 ):
+
+    if hour_type is not None and hour_type not in ("T0", "T1", "T2"):
+
+        raise ValueError(f"Unknown hour type {hour_type}")
 
     data = data.copy()
     data["t0_flg"] = (data["hour to"]) % 3 == 0
@@ -127,6 +132,9 @@ def process_data_standard(
         data_target_3h, how="inner", on="dttm"
     )
 
+    if hour_type is not None:
+        result = result.loc[result.hour_type == hour_type]
+
     result_features = (
         ["Kp"] + features_other + features_h + features_h_list + features_3h_list + flgs
     )
@@ -150,6 +158,7 @@ class KpMixedLags(KpData):
         features_h: list,
         features_other: list,
         n_targets: int,
+        hour_type: T.Optional[str] = None,
     ) -> Dataset:
         return process_data_standard(
             data=df,
@@ -158,4 +167,5 @@ class KpMixedLags(KpData):
             features_h=features_h,
             features_other=features_other,
             n_targets=n_targets,
+            hour_type=hour_type,
         )

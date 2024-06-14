@@ -11,7 +11,7 @@ class ModelConfig:
     model_config: dict
     cv_config: dict
     use_cv: bool
-    postprocess_name: str  = "Default"
+    postprocess_name: str = "Default"
 
     @classmethod
     def from_dict(cls, dct: dict):
