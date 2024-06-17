@@ -11,6 +11,8 @@ import torch.optim as opt
 from pytorch_lightning.callbacks import ModelCheckpoint, Callback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
+from sklearn.preprocessing import StandardScaler
+
 from torchsummary import summary
 
 
@@ -18,6 +20,8 @@ from numpy import concatenate
 
 from pytorch_lightning import LightningModule, Trainer
 from dataclasses import dataclass
+
+from joblib import dump
 
 from kp_regression.base_model import BaseModel
 from kp_regression.utils import safe_mkdir
@@ -141,19 +145,22 @@ class MLPClass(BaseModel):
     def build(self) -> None:
         self.model_params = TorchModelParams(**self.model_params)
         self.model = MLP(self.shape, **self.model_params.model_params)
+        self.scaler = StandardScaler()
         summary(self.model, self.shape)
 
     def train(
         self,
         X: NDArray,
         y: NDArray,
-        X_val: NDArray | None = None,
-        y_val: NDArray | None = None,
+        X_val: T.Optional[NDArray] = None,
+        y_val: T.Optional[NDArray] = None,
     ) -> None:
-        
+
         logging.info("X shape %s", X.shape)
         logging.info("y shape %s", y.shape)
 
+        X = self.scaler.fit_transform(X)
+        X_val = self.scaler.transform(X_val)
 
         dl_train = get_dataloader_from_dataset(
             X, y, shuffle=True, **self.model_params.data_params
@@ -183,7 +190,7 @@ class MLPClass(BaseModel):
             devices=1,
             default_root_dir=self.model_dir,
             callbacks=callbacks,
-            enable_progress_bar=False,
+            enable_progress_bar=True,
         )
 
         if dl_val is not None:
@@ -204,6 +211,8 @@ class MLPClass(BaseModel):
 
     def predict(self, X: NDArray) -> NDArray:
 
+        X = self.scaler.transform(X)
+
         module = TrainingModule(self.model, **self.model_params.train_params)
 
         trainer = Trainer(accelerator=self.model_params.accelerator)
@@ -223,3 +232,6 @@ class MLPClass(BaseModel):
 
         path = os.path.join(file_path, "weights.pth")
         save(self.model.state_dict(), path)
+
+        path_scaler = os.path.join(file_path, "scaler.sav")
+        dump(self.scaler, path_scaler)
