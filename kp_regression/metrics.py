@@ -3,7 +3,6 @@ import typing as T
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
-    mean_absolute_percentage_error,
     accuracy_score,
     r2_score,
 )

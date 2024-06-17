@@ -9,6 +9,8 @@
 *.ipynb
 *.sav
 *.npz
+*.pth
+*.ckpt
 .DS_Store
 experiments/*
 catboost_info/*

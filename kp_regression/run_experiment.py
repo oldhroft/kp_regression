@@ -28,7 +28,7 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
     safe_mkdir(exp_folder)
 
-    config_logger(logger, folder=exp_folder)
+    config_logger(logger)
 
     logger.info("Starting experiment in %s", exp_folder)
 
@@ -80,7 +80,7 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         model_dirs[model_cfg.model_name] = model_dir
 
         built_models[model_cfg.model_name] = builder(
-            shape=data_train.X.shape,
+            shape=data_train.X.shape[1:],
             features=data_train.feature_names,
             model_params=model_cfg.model_config,
             model_dir=model_dir,
