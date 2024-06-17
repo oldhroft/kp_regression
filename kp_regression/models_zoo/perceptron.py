@@ -12,6 +12,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, Callback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 
 from torchsummary import summary
 
@@ -38,6 +39,7 @@ class TorchModelParams:
     early_stopping_cfg: dict
     epochs: int
     accelerator: T.Literal["cpu", "tpu"] = "cpu"
+    val_frac: float = 0.1
 
 
 class MLP(nn.Module):
@@ -64,10 +66,18 @@ class MLP(nn.Module):
 
 
 class TrainingModule(LightningModule):
-    def __init__(self, model: nn.Module, lr: float = 0.03) -> None:
+    def __init__(
+        self,
+        model: nn.Module,
+        lr: float = 0.03,
+        lr_reduce_factor: float = 0.2,
+        lr_reduce_patience: int = 5,
+    ) -> None:
         super().__init__()
         self.model = model
         self.lr = lr
+        self.lr_reduce_factor = lr_reduce_factor
+        self.lr_reduce_patience = lr_reduce_patience
         self.loss = nn.MSELoss()
 
     def training_step(self, batch: Tensor, batch_idx: T.Any) -> Tensor:
@@ -93,6 +103,9 @@ class TrainingModule(LightningModule):
 
         self.log_dict(metrics, on_step=False, on_epoch=True, logger=True)
 
+        lr = self.trainer.optimizers[0].param_groups[0]['lr']
+        self.log('learning_rate', lr, on_step=False, on_epoch=True, prog_bar=True)
+
         return loss
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
@@ -105,7 +118,30 @@ class TrainingModule(LightningModule):
             lr=self.lr,
         )
 
-        return optimizer
+        lr_scheduler = opt.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=self.lr_reduce_factor,
+            patience=self.lr_reduce_patience,
+            verbose=True,
+        )
+
+        lr_dict = {
+            # The scheduler instance
+            "scheduler": lr_scheduler,
+            # The unit of the scheduler's step size, could also be 'step'.
+            # 'epoch' updates the scheduler on epoch end whereas 'step'
+            # updates it after a optimizer update.
+            "interval": "epoch",
+            # How many epochs/steps should pass between calls to
+            # `scheduler.step()`. 1 corresponds to updating the learning
+            # rate after every epoch/step.
+            "frequency": 1,
+            # Metric to to monitor for schedulers like `ReduceLROnPlateau`
+            "monitor": "val_loss",
+        }
+
+        return [optimizer], [lr_dict]
 
 
 def get_dataloader_from_dataset(
@@ -156,11 +192,27 @@ class MLPClass(BaseModel):
         y_val: T.Optional[NDArray] = None,
     ) -> None:
 
+        if X_val is None and self.model_params.val_frac is not None:
+            logging.info("Received val frac, creating val split")
+
+            X, X_val, y, y_val = train_test_split(
+                X,
+                y,
+                test_size=self.model_params.val_frac,
+                random_state=17,
+                shuffle=True,
+            )
+
         logging.info("X shape %s", X.shape)
         logging.info("y shape %s", y.shape)
 
         X = self.scaler.fit_transform(X)
-        X_val = self.scaler.transform(X_val)
+
+        if X_val is not None:
+            X_val = self.scaler.transform(X_val)
+
+            logging.info("X val shape %s", X_val.shape)
+            logging.info("y val shape %s", y_val.shape)
 
         dl_train = get_dataloader_from_dataset(
             X, y, shuffle=True, **self.model_params.data_params
