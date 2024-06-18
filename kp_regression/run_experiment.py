@@ -82,6 +82,7 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         built_models[model_cfg.model_name] = builder(
             shape=data_train.X.shape[1:],
             features=data_train.feature_names,
+            output_shape=data_train.y.shape[1:],
             model_params=model_cfg.model_config,
             model_dir=model_dir,
         )

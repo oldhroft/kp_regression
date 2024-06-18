@@ -7,15 +7,24 @@ from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 
 from kp_regression.models_zoo.column_estimator import ColumnEstimator
-from kp_regression.base_model import SklearnMultiOutputModel
+from kp_regression.models_zoo.sklearn_models import SklearnMultiOutputModel, BoostingValModel
 
 
 class LGBMRegressorClass(SklearnMultiOutputModel):
     def get_model(self) -> BaseEstimator:
         return LGBMRegressor()
 
+class LGBMRegressorValClass(BoostingValModel):
+    early_stopping_in_fit = False
+    def get_model(self) -> BaseEstimator:
+        return LGBMRegressor()
+
 
 class CatBoostRegressorClass(SklearnMultiOutputModel):
+    def get_model(self) -> BaseEstimator:
+        return CatBoostRegressor()
+    
+class CatBoostRegressorValClass(BoostingValModel):
     def get_model(self) -> BaseEstimator:
         return CatBoostRegressor()
 

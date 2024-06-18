@@ -1,25 +1,7 @@
 import typing as T
+from numpy.typing import NDArray
 
 from abc import ABC, abstractmethod
-
-from numpy.typing import NDArray
-from sklearn.model_selection import (
-    GridSearchCV,
-    RandomizedSearchCV,
-    KFold,
-    TimeSeriesSplit,
-)
-from sklearn.utils.validation import check_is_fitted
-from sklearn.exceptions import NotFittedError
-from sklearn.base import clone
-
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.base import BaseEstimator
-
-from joblib import dump
-import os
-
-from kp_regression.utils import dump_json, safe_mkdir, serialize_params
 
 import logging
 
@@ -30,6 +12,7 @@ class BaseModel(ABC):
         self,
         shape: tuple,
         features: T.Optional[T.List[str]],
+        output_shape: tuple,
         model_params: T.Dict,
         model_dir: str,
     ) -> None:
@@ -38,6 +21,7 @@ class BaseModel(ABC):
         self.model_params = model_params
         self.shape = shape
         self.model_dir = model_dir
+        self.output_shape = output_shape
 
         self.build()
 
@@ -66,70 +50,3 @@ class BaseModel(ABC):
     @abstractmethod
     def cv(self, cv_params: T.Dict, X: NDArray, y: NDArray):
         raise NotImplemented("Method not implemented")
-
-
-class SklearnMultiOutputModel(BaseModel):
-
-    @abstractmethod
-    def get_model(self) -> BaseEstimator: ...
-
-    def build(self) -> None:
-        self.model = self.get_model()
-        self.model.set_params(**self.model_params)
-        self.multi_model = MultiOutputRegressor(self.model)
-
-    def save(self, file_path: str) -> None:
-        try:
-            check_is_fitted(self.multi_model)
-        except NotFittedError:
-            logging.warn("Model is not fiited, not saving")
-            return
-
-        safe_mkdir(file_path)
-
-        for i, model in enumerate(self.multi_model.estimators_):
-
-            path = os.path.join(file_path, f"{i}.sav")
-            dump(model, path)
-
-        params_path = os.path.join(file_path, "params.json")
-        dump_json(serialize_params(self.multi_model.estimators_[0]), params_path)
-
-    def train(
-        self,
-        X: NDArray,
-        y: NDArray,
-        X_val: T.Optional[NDArray] = None,
-        y_val: T.Optional[NDArray] = None,
-    ):
-        self.multi_model.fit(X, y)
-
-    def predict(self, X: NDArray) -> NDArray:
-        return self.multi_model.predict(X)
-
-    def cv(self, cv_params: T.Dict, X: NDArray, y: NDArray):
-        """A very hacky type of CV"""
-
-        if cv_params["cv_split_type"] == "fold":
-            kf = KFold(**cv_params["cv_split_cfg"])
-        elif cv_params["cv_split_type"] == "tss":
-            kf = TimeSeriesSplit(**cv_params["cv_split_cfg"])
-        else:
-            raise ValueError("Param not specified")
-
-        if cv_params["search_type"] == "gs":
-            self.gcv = GridSearchCV(self.model, cv=kf, **cv_params["search_cfg"])
-        elif cv_params["search_type"] == "rs":
-            self.gcv = RandomizedSearchCV(self.model, cv=kf, **cv_params["search_cfg"])
-
-        logging.info("Started cross-validation")
-        self.gcv.fit(X, y[:, 0])
-
-        logging.info(
-            "Best params %s, best score %s", self.gcv.best_params_, self.gcv.best_score_
-        )
-        results_path = os.path.join(self.model_dir, "cv_results.json")
-        dump_json(self.gcv.cv_results_, results_path)
-        self.model_params = self.gcv.best_params_
-        logging.info("Rebuilding...")
-        self.build()
