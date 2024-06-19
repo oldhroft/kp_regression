@@ -9,6 +9,8 @@ from sklearn.metrics import (
 from numpy.typing import NDArray
 from pandas import DataFrame
 
+from kp_regression.data.postprocess import attach_kp_index_to_grid
+
 
 def calculate_regression_metrics(
     preds: NDArray, y_true: NDArray, meta: DataFrame
@@ -26,7 +28,11 @@ def calculate_regression_metrics(
         metrics["MAE"] = mean_absolute_error(y_true_i, pred_i)
         metrics["MSE"] = mean_squared_error(y_true_i, pred_i)
 
-        metrics["Accuracy"] = accuracy_score(y_true_i, pred_i.astype("int64"))
+        pred_i_round = attach_kp_index_to_grid(
+            pred_i.astype("int64")
+        )
+
+        metrics["Accuracy"] = accuracy_score(y_true_i, pred_i_round.astype("int64"))
 
         metrics["HigherRate"] = (pred_i > y_true_i).mean()
         metrics["LowerRate"] = (pred_i < y_true_i).mean()
@@ -41,21 +47,21 @@ def calculate_regression_metrics(
             metrics["MAE_T0"] = mean_absolute_error(y_true_i[mask_t0], pred_i[mask_t0])
             metrics["MSE_T0"] = mean_squared_error(y_true_i[mask_t0], pred_i[mask_t0])
         else:
-            metrics["MAE_T0"] = None
+            metrics["MSE_T0"] = None
             metrics["MAE_T0"] = None
 
         if mask_t1.any():
             metrics["MAE_T1"] = mean_absolute_error(y_true_i[mask_t1], pred_i[mask_t1])
             metrics["MSE_T1"] = mean_squared_error(y_true_i[mask_t1], pred_i[mask_t1])
         else:
-            metrics["MAE_T1"] = None
+            metrics["MSE_T1"] = None
             metrics["MAE_T1"] = None
 
         if mask_t2.any():
             metrics["MAE_T2"] = mean_absolute_error(y_true_i[mask_t2], pred_i[mask_t2])
             metrics["MSE_T2"] = mean_squared_error(y_true_i[mask_t2], pred_i[mask_t2])
         else:
-            metrics["MAE_T2"] = None
+            metrics["MSE_T2"] = None
             metrics["MAE_T2"] = None
 
         results.append(metrics)
