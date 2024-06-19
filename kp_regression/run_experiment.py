@@ -77,6 +77,7 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         )
         builder = MODEL_FACTORY[model_cfg.model_type]
         model_dir = os.path.join(model_folder, add_unique_suffix(model_cfg.model_name))
+        safe_mkdir(model_dir)
         model_dirs[model_cfg.model_name] = model_dir
 
         built_models[model_cfg.model_name] = builder(

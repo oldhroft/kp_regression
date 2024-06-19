@@ -251,11 +251,17 @@ class MLPClassMulti(BaseModel):
                 self.models[dim_i], **self.model_params.train_params
             )
 
+            hist_dir = os.path.join(self.model_dir, "hist")
+            safe_mkdir(hist_dir)
+
+            hist_dir_i = os.path.join(hist_dir, str(dim_i))
+            safe_mkdir(hist_dir_i)
+
             trainer = Trainer(
                 max_epochs=self.model_params.epochs,
                 accelerator=self.model_params.accelerator,
                 devices=1,
-                default_root_dir=self.model_dir,
+                default_root_dir=hist_dir_i,
                 callbacks=callbacks,
                 enable_progress_bar=True,
             )
@@ -376,11 +382,13 @@ class MLPClass(BaseModel):
 
         training_module = TrainingModule(self.model, **self.model_params.train_params)
 
+        hist_dir = os.path.join(self.model_dir, "hist")
+        safe_mkdir(hist_dir)
         trainer = Trainer(
             max_epochs=self.model_params.epochs,
             accelerator=self.model_params.accelerator,
             devices=1,
-            default_root_dir=self.model_dir,
+            default_root_dir=hist_dir,
             callbacks=callbacks,
             enable_progress_bar=True,
         )

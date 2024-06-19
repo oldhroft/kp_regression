@@ -30,7 +30,7 @@ import logging
 class SklearnMultiOutputModel(BaseModel):
 
     @abstractmethod
-    def get_model(self) -> BaseEstimator: ...
+    def get_model(self, i: int) -> BaseEstimator: ...
 
     def build(self) -> None:
         self.model = self.get_model()
@@ -110,7 +110,7 @@ class BoostingValModel(BaseModel):
     def build(self) -> None:
         self.model_params = BoostingEvalConfig(**self.model_params)
         self.models = [
-            self.get_model().set_params(**self.model_params.model_params)
+            self.get_model(i).set_params(**self.model_params.model_params)
             for i in range(self.output_shape[0])
         ]
 
