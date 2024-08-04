@@ -15,6 +15,7 @@
 .DS_Store
 experiments/*
 catboost_info/*
+run.sh
 
 
 # Byte-compiled / optimized / DLL files
