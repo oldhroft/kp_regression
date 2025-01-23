@@ -17,11 +17,12 @@ import logging
 
 @dataclass
 class Dataset:
-    X: NDArray
+    X: T.Union[NDArray, T.Tuple[NDArray, ...]]
     y: NDArray
-    feature_names: T.List[str]
-    target_names: T.List[str]
+    feature_names: T.Any
+    target_names: T.Any
     meta: DataFrame
+    shape: tuple
 
     def save(self, path: str, names_only: bool = True):
 
@@ -34,15 +35,32 @@ class Dataset:
 
         if not names_only:
             out_path = os.path.join(path, "data.npz")
-            savez_compressed(out_path, X=self.X, y=self.y)
+            if not isinstance(self.X, tuple):
+                savez_compressed(out_path, X=self.X, y=self.y)
+            else:
+                save_args = {f"X{i}": x for i, x in enumerate(self.X)}
+                savez_compressed(out_path, y=self.y, **save_args)
 
             meta_path = os.path.join(path, "meta.csv")
             self.meta.to_csv(meta_path, index=None)
 
     def log(self, name):
-        logging.info(
-            "Dataset %s, X shape = %s, y shape = %s", name, self.X.shape, self.y.shape
-        )
+
+        if not isinstance(self.X, tuple):
+            logging.info(
+                "Dataset %s, X shape = %s, y shape = %s",
+                name,
+                self.X.shape,
+                self.y.shape,
+            )
+        else:
+            log_string = ", ".join(f"X{i} shape = %s" for i in range(len(self.X)))
+            logging.info(
+                "Dataset %s, y shape %s, " + log_string,
+                name,
+                self.y.shape,
+                *(x.shape for x in self.X),
+            )
         logging.info(
             "Dataset %s, Min dttm %s, Max dttm %s",
             name,
@@ -91,9 +109,11 @@ class KpData(BaseData):
         self.raw_data = read_data(self.input_path)
 
     @abstractmethod
-    def process_data(self, df: DataFrame, params: dict) -> Dataset: ...
+    def process_data(self, df: DataFrame, is_train: bool, **kwargs) -> Dataset: ...
 
-    def get_train_test(self, year_test, year_val) -> T.Tuple[Dataset, Dataset]:
+    def get_train_test(
+        self, year_test: int, year_val: int
+    ) -> T.Tuple[Dataset, Dataset]:
 
         self._read_data()
 
@@ -104,9 +124,9 @@ class KpData(BaseData):
             drop=True
         )
 
-        data_train = self.process_data(raw_data_train, **self.pipe_params)
+        data_train = self.process_data(raw_data_train, is_train=True, **self.pipe_params)
         data_train.log("Train")
-        data_test = self.process_data(raw_data_test, **self.pipe_params)
+        data_test = self.process_data(raw_data_test, is_train=False, **self.pipe_params)
         data_test.log("Test")
 
         data_train.save(
@@ -119,7 +139,7 @@ class KpData(BaseData):
         return data_train, data_test
 
     def get_train_test_val(
-        self, year_test, year_val
+        self, year_test: int, year_val: int
     ) -> T.Tuple[Dataset, Dataset, Dataset]:
 
         self._read_data()
@@ -134,11 +154,11 @@ class KpData(BaseData):
             drop=True
         )
 
-        data_train = self.process_data(raw_data_train, **self.pipe_params)
+        data_train = self.process_data(raw_data_train, is_train=True, **self.pipe_params)
         data_train.log("Train")
-        data_test = self.process_data(raw_data_test, **self.pipe_params)
+        data_test = self.process_data(raw_data_test, is_train=False, **self.pipe_params)
         data_test.log("Test")
-        data_val = self.process_data(raw_data_val, **self.pipe_params)
+        data_val = self.process_data(raw_data_val, is_train=False, **self.pipe_params)
         data_val.log("Val")
 
         data_train.save(

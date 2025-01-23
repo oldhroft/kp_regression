@@ -14,6 +14,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator
 
 from numpy.typing import NDArray
+from numpy import ndarray
 from numpy import concatenate
 
 from joblib import dump
@@ -23,6 +24,7 @@ from dataclasses import dataclass
 
 from kp_regression.utils import dump_json, safe_mkdir, serialize_params
 from kp_regression.base_model import BaseModel
+from kp_regression.data_pipe import Dataset
 
 import logging
 
@@ -56,18 +58,26 @@ class SklearnMultiOutputModel(BaseModel):
 
     def train(
         self,
-        X: NDArray,
-        y: NDArray,
-        X_val: T.Optional[NDArray] = None,
-        y_val: T.Optional[NDArray] = None,
+        ds: Dataset,
+        ds_val: T.Optional[Dataset] = None,
+        # X: NDArray,
+        # y: NDArray,
+        # X_val: T.Optional[NDArray] = None,
+        # y_val: T.Optional[NDArray] = None,
     ):
-        self.multi_model.fit(X, y)
+        assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
+        self.multi_model.fit(ds.X, ds.y)
 
-    def predict(self, X: NDArray) -> NDArray:
-        return self.multi_model.predict(X)
+    def predict(self, ds: Dataset) -> NDArray:
+        assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
+        return self.multi_model.predict(ds.X)
 
-    def cv(self, cv_params: T.Dict, X: NDArray, y: NDArray):
+    def cv(self, cv_params: T.Dict, ds: Dataset):
         """A very hacky type of CV"""
+        assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
+
+        X = ds.X
+        y = ds.y
 
         if cv_params["cv_split_type"] == "fold":
             kf = KFold(**cv_params["cv_split_cfg"])
@@ -114,13 +124,17 @@ class BoostingValModel(BaseModel):
             for i in range(self.output_shape[0])
         ]
 
-    def train(
-        self,
-        X: NDArray,
-        y: NDArray,
-        X_val: T.Optional[NDArray] = None,
-        y_val: T.Optional[NDArray] = None,
-    ):
+    def train(self, ds: Dataset, ds_val: T.Optional[Dataset] = None):
+
+        assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
+        assert ds_val is None or isinstance(
+            ds_val.X, ndarray
+        ), "For sklearn models dataset should be Numpy"
+
+        X, y = ds.X, ds.y
+
+        X_val = None if ds_val is None else ds_val.X
+        y_val = None if ds_val is None else ds_val.y
 
         if X_val is None and self.model_params.val_frac is not None:
             logging.info("Received val frac, creating val split")
@@ -166,7 +180,8 @@ class BoostingValModel(BaseModel):
             params_path = os.path.join(file_path, f"params{i}.json")
             dump_json(serialize_params(model), params_path)
 
-    def predict(self, X: NDArray) -> NDArray:
+    def predict(self, ds: Dataset) -> NDArray:
+        assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
 
         total_preds = []
 
@@ -174,7 +189,7 @@ class BoostingValModel(BaseModel):
             logging.info("Predicting for dim %s", dim_i)
 
             total_preds.append(
-                self.models[dim_i].predict(X)[:, None],
+                self.models[dim_i].predict(ds.X)[:, None],
             )
 
         return concatenate(total_preds, axis=1)

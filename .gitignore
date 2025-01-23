@@ -16,6 +16,7 @@
 experiments/*
 catboost_info/*
 run.sh
+*.zip
 
 
 # Byte-compiled / optimized / DLL files

@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 
 from abc import ABC, abstractmethod
 
-import logging
+from kp_regression.data_pipe import Dataset
 
 
 class BaseModel(ABC):
@@ -30,13 +30,7 @@ class BaseModel(ABC):
         raise NotImplemented("Method not implemented")
 
     @abstractmethod
-    def train(
-        self,
-        X: NDArray,
-        y: NDArray,
-        X_val: T.Optional[NDArray] = None,
-        y_val: T.Optional[NDArray] = None,
-    ) -> None:
+    def train(self, ds: Dataset, ds_val: T.Optional[Dataset] = None) -> None:
         raise NotImplemented("Method not implemented")
 
     @abstractmethod
@@ -44,9 +38,9 @@ class BaseModel(ABC):
         raise NotImplemented("Method not implemented")
 
     @abstractmethod
-    def predict(self, X: NDArray) -> NDArray:
+    def predict(self, ds: Dataset) -> NDArray:
         raise NotImplemented("Method not implemented")
 
     @abstractmethod
-    def cv(self, cv_params: T.Dict, X: NDArray, y: NDArray):
+    def cv(self, cv_params: T.Dict, ds: Dataset):
         raise NotImplemented("Method not implemented")

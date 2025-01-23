@@ -81,7 +81,7 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         model_dirs[model_cfg.model_name] = model_dir
 
         built_models[model_cfg.model_name] = builder(
-            shape=data_train.X.shape[1:],
+            shape=data_train.shape,
             features=data_train.feature_names,
             output_shape=data_train.y.shape[1:],
             model_params=model_cfg.model_config,
@@ -108,13 +108,13 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
         if model_cfg.use_cv:
             logger.info("Performing CV for model %s", model_cfg.model_name)
-            model.cv(model_cfg.cv_config, data_train.X, data_train.y)
+            model.cv(model_cfg.cv_config, data_test)
 
         logger.info("Training model %s", model_cfg.model_name)
         if config.data_config.use_val:
-            model.train(data_train.X, data_train.y, data_val.X, data_val.y)
+            model.train(data_train, data_val)
         else:
-            model.train(data_train.X, data_train.y)
+            model.train(data_train)
 
         save_path = os.path.join(model_dir, "model")
         logger.info("Saving model to %s", save_path)
@@ -122,7 +122,7 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
         logger.info("Predicting model %s", model_cfg.model_type)
 
-        preds = model.predict(X=data_test.X)
+        preds = model.predict(data_test)
 
         postproc = POST_PROCESS_FACTORY[model_cfg.postprocess_name]
 
