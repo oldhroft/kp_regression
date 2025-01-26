@@ -146,7 +146,7 @@ def process_data_standard(
         meta=result[meta_cols],
         feature_names=result_features,
         target_names=target_3h,
-        shape=(len(result_features),)
+        shape=(len(result_features),),
     )
 
 
@@ -211,10 +211,15 @@ def process_data_sequence(
         forward=False,
         lags=lags_h,
         trim=True,
+        sort_lags=True,
     )
 
     data_lagged_3h_t0, features_3h_list = add_lags(
-        data.loc[data.t0_flg, ["dttm", "Kp"]], subset=["Kp"], lags=lags_kp, trim=True
+        data.loc[data.t0_flg, ["dttm", "Kp"]],
+        subset=["Kp"],
+        lags=lags_kp,
+        trim=True,
+        sort_lags=True,
     )
 
     data_lagged_3h_t1, _ = add_lags(
@@ -300,8 +305,8 @@ def process_data_sequence(
         data_target_3h, how="inner", on="dttm"
     )
 
-    data_lagged_np = result[features_h + features_h_list].values
-    data_lagged_3h_np = result[["Kp"] + features_3h_list].values
+    data_lagged_np = result[features_h_list + features_h].ffill().values
+    data_lagged_3h_np = result[features_3h_list + ["Kp"]].ffill().values
 
     data_flg = result[flgs].values.astype("float64")
 
@@ -309,11 +314,11 @@ def process_data_sequence(
         if is_train:
             data_lagged_np = scaler1.fit_transform(data_lagged_np)
             data_lagged_3h_np = scaler2.fit_transform(data_lagged_3h_np)
-            data_flg = scaler2.fit_transform(data_flg)
+            data_flg = scaler3.fit_transform(data_flg)
         else:
             data_lagged_np = scaler1.transform(data_lagged_np)
             data_lagged_3h_np = scaler2.transform(data_lagged_3h_np)
-            data_flg = scaler2.transform(data_flg)
+            data_flg = scaler3.transform(data_flg)
 
     data_lagged_seq = data_lagged_np.reshape(-1, lags_h + 1, len(features_h)).transpose(
         0, 2, 1
@@ -331,11 +336,7 @@ def process_data_sequence(
         meta=result[meta_cols],
         feature_names=result_features,
         target_names=target_3h,
-        shape=(
-            (len(features_h), lags_h + 1),
-            (1, lags_kp + 1),
-            (3,)
-        )
+        shape=((len(features_h), lags_h + 1), (1, lags_kp + 1), (3,)),
     ), (scaler1, scaler2, scaler3)
 
 

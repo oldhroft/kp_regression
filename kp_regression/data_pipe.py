@@ -18,7 +18,7 @@ import logging
 @dataclass
 class Dataset:
     X: T.Union[NDArray, T.Tuple[NDArray, ...]]
-    y: NDArray
+    y: T.Optional[NDArray]
     feature_names: T.Any
     target_names: T.Any
     meta: DataFrame

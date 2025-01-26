@@ -26,19 +26,6 @@ import logging
 import typing as T
 
 
-def conv1d_block(n_inputs: int, n_outputs: int, kernel_size: int) -> nn.Sequential:
-    return nn.Sequential(
-        nn.Conv1d(
-            in_channels=n_inputs,
-            out_channels=n_outputs,
-            kernel_size=kernel_size,
-            padding="same",
-        ),
-        nn.ReLU(),
-        nn.AvgPool1d(2, 2),
-    )
-
-
 def fc_layer(n_inputs: int, n_outputs: int, use_relu: bool = False) -> nn.Sequential:
     if use_relu:
         return nn.Sequential(nn.Linear(n_inputs, n_outputs), nn.ReLU())
@@ -64,76 +51,63 @@ def get_fc_net(
     return nn.Sequential(*layers_list)
 
 
-def get_conv1d_backbone(
-    input_shape: T.Tuple[int], layers: T.List[int], kernel_size: int = 3
-) -> T.Tuple[nn.Sequential, int]:
-    assert len(input_shape) == 2, "Conv1Net only accepts 2D data"
-
-    n_inputs, n_features = input_shape
-
-    layers_list = []
-
-    for n_outputs in layers:
-
-        layers_list.append(
-            conv1d_block(
-                n_inputs=n_inputs, n_outputs=n_outputs, kernel_size=kernel_size
-            )
-        )
-        n_inputs = n_outputs
-        n_features = n_features // 2
-
-    layers_list.append(nn.Flatten())
-
-    return nn.Sequential(*layers_list), n_features * n_outputs
-
-
-class Conv1DNet3inputs(nn.Module):
+class LSTM(nn.Module):
     def __init__(
         self,
         input_shape1: T.Tuple[int],
         input_shape2: T.Tuple[int],
         input_shape3: T.Tuple[int],
-        conv_layers1: T.List[int],
-        conv_layers2: T.List[int],
+        hidden_size1: int,
+        hidden_size2: int,
+        num_layers1: int,
+        num_layers2: int,
         layers: T.List[int],
         layers_head: T.List[int],
-        kernel_size: int = 3,
+        bidirectional: bool = False,
     ) -> None:
         super().__init__()
 
-        self.cv_net1, n1 = get_conv1d_backbone(
-            input_shape=input_shape1, layers=conv_layers1, kernel_size=kernel_size
+        self.rnn1 = nn.LSTM(
+            input_size=input_shape1[0],
+            hidden_size=hidden_size1,
+            num_layers=num_layers1,
+            batch_first=True,
+            bidirectional=bidirectional,
         )
-        self.cv_net2, n2 = get_conv1d_backbone(
-            input_shape=input_shape2, layers=conv_layers2, kernel_size=kernel_size
+        self.rnn2 = nn.LSTM(
+            input_size=input_shape2[0],
+            hidden_size=hidden_size2,
+            num_layers=num_layers2,
+            batch_first=True,
+            bidirectional=bidirectional,
         )
-
         self.net3 = get_fc_net(input_shape=input_shape3, layers=layers)
 
-        input_shape_fc = n1 + n2 + layers[-1]
+        mult = 2 if bidirectional else 1
+
+        input_shape_fc = mult * hidden_size1 + mult * hidden_size2 + layers[-1]
 
         self.head = get_fc_net(
             input_shape=(input_shape_fc,), layers=layers_head, last=True
         )
 
     def forward(self, x1, x2, x3):
-        y1 = self.cv_net1(x1)
-        y2 = self.cv_net2(x2)
+        y1, _ = self.rnn1(x1.transpose(2, 1))
+        y2, _ = self.rnn2(x2.transpose(2, 1))
         y3 = self.net3(x3)
 
-        flattaned = torch.concat([y1, y2, y3], dim=1)
+        flattaned = torch.concat([y1[:, -1, :], y2[:, -1, :], y3], dim=1)
 
         return self.head(flattaned)
 
 
-class Conv1DNet3InputsMulti(BaseModel):
+class LSTM3Inputs(BaseModel):
 
     def build(self) -> None:
         self.model_params = TorchModelParams(**self.model_params)
 
         self.models = [
-            Conv1DNet3inputs(
+            LSTM(
                 input_shape1=self.shape[0],
                 input_shape2=self.shape[1],
                 input_shape3=self.shape[2],

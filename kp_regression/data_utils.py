@@ -18,6 +18,7 @@ def add_lags(
     lags: int = 1,
     trim: bool = False,
     suffix_name: str = None,
+    sort_lags: bool = False,
 ) -> T.Tuple[DataFrame, T.List[str]]:
     if suffix_name is None:
         suffix_name = "lead" if forward else "lag"
@@ -27,6 +28,7 @@ def add_lags(
     digits = len(str(lags))
 
     columns = []
+    sort_order = {}
 
     if not isinstance(lags, int):
         raise ValueError(f"Lags should be int, {type(lags)} type prodided")
@@ -39,6 +41,17 @@ def add_lags(
             lag = -i if forward else i
             index = str(i).zfill(digits)
             column_suffix = f"_{suffix_name}_{index}"
+            tmp = x.shift(lag).add_suffix(column_suffix)
+
+            columns.extend(tmp.columns)
+            zipped = list(zip([i for _ in range(len(x.columns))], x.columns))
+
+            sort_order = dict(sort_order, **dict(
+                zip(
+                    list(tmp.columns), 
+                    zipped
+                )
+            ))
 
             x = x.join(x.shift(lag).add_suffix(column_suffix))
 
@@ -51,6 +64,11 @@ def add_lags(
             column_suffix = f"_{suffix_name}_{index}"
             tmp = x.loc[:, subset].shift(lag).add_suffix(column_suffix)
             columns.extend(tmp.columns)
+
+            zipped = list(zip([i for _ in range(len(subset))], subset))
+
+            sort_order = dict(sort_order, **dict(zip(list(tmp.columns), zipped)))
+
             x = x.join(tmp)
 
     elif isinstance(subset, str):
@@ -59,11 +77,13 @@ def add_lags(
             index = str(i).zfill(digits)
             column_name = f"{subset}_{suffix_name}_{index}"
             columns.append(column_name)
-
+            sort_order[column_name] = (i, subset)
             x = x.join(x.loc[:, subset].shift(lag).rename(column_name))
     else:
         raise ValueError(f"Subset should be str or list, provided type {type(subset)}")
 
+    if sort_lags:
+        columns = sorted(columns, key=lambda x: sort_order[x], reverse=True)
     return _trim(x, forward, trim, lags), columns
 
 
