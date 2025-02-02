@@ -39,7 +39,7 @@ def process_data_standard(
     flgs = ["t0_flg", "t1_flg", "t2_flg"]
 
     data_lagged, features_h_list = add_lags(
-        data[features_h + features_other + flgs + meta_cols],
+        data[features_h + features_other + flgs + meta_cols].ffill(),
         subset=features_h,
         forward=False,
         lags=lags_h,
@@ -206,7 +206,7 @@ def process_data_sequence(
     flgs = ["t0_flg", "t1_flg", "t2_flg"]
 
     data_lagged, features_h_list = add_lags(
-        data[features_h + features_other + flgs + meta_cols],
+        data[features_h + features_other + flgs + meta_cols].ffill(),
         subset=features_h,
         forward=False,
         lags=lags_h,

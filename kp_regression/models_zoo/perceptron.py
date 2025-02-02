@@ -34,7 +34,12 @@ import logging
 
 class MLP(nn.Module):
 
-    def __init__(self, input_shape: T.Tuple[int], layers: T.List[int]) -> None:
+    def __init__(
+        self,
+        input_shape: T.Tuple[int],
+        layers: T.List[int],
+        dropout: T.Optional[float] = None,
+    ) -> None:
         super().__init__()
 
         assert len(input_shape) == 1, "MLP only accepts 1D data"
@@ -45,6 +50,8 @@ class MLP(nn.Module):
 
         for n_outputs in layers[:-1]:
             layers_list.append(nn.Linear(n_inputs, n_outputs))
+            if dropout is not None:
+                layers_list.append(nn.Dropout(p=dropout))
             layers_list.append(nn.ReLU())
             n_inputs = n_outputs
 
@@ -73,7 +80,7 @@ class MLPClassMulti(BaseModel):
         ds: Dataset,
         ds_val: T.Optional[Dataset] = None,
     ) -> None:
-        
+
         assert isinstance(ds.X, ndarray), "For MLP dataset should be Numpy"
         assert ds_val is None or isinstance(
             ds_val.X, ndarray
@@ -222,17 +229,12 @@ class MLPClass(BaseModel):
         self.scaler = StandardScaler()
         summary(self.model, self.shape, device=self.model_params.accelerator)
 
-    def train(
-        self,
-        ds: Dataset,
-        ds_val: Dataset
-    ) -> None:
+    def train(self, ds: Dataset, ds_val: Dataset) -> None:
 
         assert isinstance(ds.X, ndarray), "For MLP dataset should be Numpy"
         assert ds_val is None or isinstance(
             ds_val.X, ndarray
         ), "For MLP dataset should be Numpy"
-
 
         X, y = ds.X, ds.y
 

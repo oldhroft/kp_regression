@@ -8,6 +8,7 @@ from sklearn.metrics import (
 )
 from numpy.typing import NDArray
 from pandas import DataFrame
+from numpy import isnan
 
 from kp_regression.data.postprocess import attach_kp_index_to_grid
 
@@ -24,6 +25,11 @@ def calculate_regression_metrics(
 
         pred_i = preds[:, i]
         y_true_i = y_true[:, i]
+
+        if isnan(pred_i).any():
+            metrics["MAE"] = None
+            metrics["error"] = True
+            continue
 
         metrics["MAE"] = mean_absolute_error(y_true_i, pred_i)
         metrics["MSE"] = mean_squared_error(y_true_i, pred_i)
