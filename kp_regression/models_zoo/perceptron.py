@@ -17,7 +17,7 @@ from numpy import concatenate, ndarray
 
 from pytorch_lightning import Trainer
 
-from joblib import dump
+from joblib import dump, load
 
 from kp_regression.base_model import BaseModel
 from kp_regression.utils import safe_mkdir
@@ -220,6 +220,13 @@ class MLPClassMulti(BaseModel):
         path_scaler = os.path.join(file_path, "scaler.sav")
         dump(self.scaler, path_scaler)
 
+    def load(self, dirpath: str) -> None:
+        for i, model in enumerate(self.models):
+            path = os.path.join(dirpath, f"weights{i}.pth")
+            model.load_state_dict(torch.load(path))
+
+        path_scaler = os.path.join(dirpath, "scaler.sav")
+        self.scaler = load(path_scaler)
 
 class MLPClass(BaseModel):
 
@@ -342,3 +349,8 @@ class MLPClass(BaseModel):
 
         path_scaler = os.path.join(file_path, "scaler.sav")
         dump(self.scaler, path_scaler)
+
+    def load(self, path: str) -> None:
+        self.model.load_state_dict(torch.load(path))
+        path_scaler = os.path.join(path, "scaler.sav")
+        self.scaler = load(path_scaler)

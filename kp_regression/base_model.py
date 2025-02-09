@@ -44,3 +44,7 @@ class BaseModel(ABC):
     @abstractmethod
     def cv(self, cv_params: T.Dict, ds: Dataset):
         raise NotImplemented("Method not implemented")
+
+    @abstractmethod
+    def load(self, path: str) -> None:
+        raise NotImplemented("Method not implemented")

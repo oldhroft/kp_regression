@@ -271,3 +271,7 @@ class Conv1DNet3InputsMulti(BaseModel):
         for i, model in enumerate(self.models):
             path = os.path.join(file_path, f"weights{i}.pth")
             save(model.state_dict(), path)
+
+    def load(self, path) -> None:
+        for i, model in enumerate(self.models):
+            model.load_state_dict(torch.load(os.path.join(path, f"weights{i}.pth")))

@@ -17,7 +17,7 @@ from numpy.typing import NDArray
 from numpy import ndarray
 from numpy import concatenate
 
-from joblib import dump
+from joblib import dump, load
 import os
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -32,7 +32,7 @@ import logging
 class SklearnMultiOutputModel(BaseModel):
 
     @abstractmethod
-    def get_model(self, i: int) -> BaseEstimator: ...
+    def get_model(self) -> BaseEstimator: ...
 
     def build(self) -> None:
         self.model = self.get_model()
@@ -43,7 +43,7 @@ class SklearnMultiOutputModel(BaseModel):
         try:
             check_is_fitted(self.multi_model)
         except NotFittedError:
-            logging.warn("Model is not fiited, not saving")
+            logging.warning("Model is not fiited, not saving")
             return
 
         safe_mkdir(file_path)
@@ -60,10 +60,6 @@ class SklearnMultiOutputModel(BaseModel):
         self,
         ds: Dataset,
         ds_val: T.Optional[Dataset] = None,
-        # X: NDArray,
-        # y: NDArray,
-        # X_val: T.Optional[NDArray] = None,
-        # y_val: T.Optional[NDArray] = None,
     ):
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
         self.multi_model.fit(ds.X, ds.y)
@@ -103,6 +99,14 @@ class SklearnMultiOutputModel(BaseModel):
         logging.info("Rebuilding...")
         self.build()
 
+    def load(self, dirpath: str) -> None:
+
+        paths = [os.path.join(dirpath, f"{i}.sav") for i in range(self.output_shape[0])]
+        models = map(load, paths)
+
+        for i, model in enumerate(models):
+            self.multi_model.estimators_[i] = model
+
 
 @dataclass
 class BoostingEvalConfig:
@@ -115,7 +119,7 @@ class BoostingValModel(BaseModel):
     early_stopping_in_fit = True
 
     @abstractmethod
-    def get_model(self) -> BaseEstimator: ...
+    def get_model(self, i: int) -> BaseEstimator: ...
 
     def build(self) -> None:
         self.model_params = BoostingEvalConfig(**self.model_params)
@@ -196,3 +200,11 @@ class BoostingValModel(BaseModel):
 
     def cv(self, cv_params: T.Dict, X: NDArray, y: NDArray):
         raise NotImplementedError("CV not implemented")
+
+    def load(self, dirpath: str) -> None:
+
+        paths = [os.path.join(dirpath, f"{i}.sav") for i in range(self.output_shape[0])]
+        models = map(load, paths)
+
+        for i, model in enumerate(models):
+            self.models[i] = model
