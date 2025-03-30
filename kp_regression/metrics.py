@@ -34,9 +34,7 @@ def calculate_regression_metrics(
         metrics["MAE"] = mean_absolute_error(y_true_i, pred_i)
         metrics["MSE"] = mean_squared_error(y_true_i, pred_i)
 
-        pred_i_round = attach_kp_index_to_grid(
-            pred_i.astype("int64")
-        )
+        pred_i_round = attach_kp_index_to_grid(pred_i.astype("int64"))
 
         metrics["Accuracy"] = accuracy_score(y_true_i, pred_i_round.astype("int64"))
 

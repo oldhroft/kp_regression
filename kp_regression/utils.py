@@ -11,6 +11,7 @@ from numpy import ndarray
 from sklearn.base import BaseEstimator
 from sklearn.pipeline import Pipeline
 
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, ndarray):

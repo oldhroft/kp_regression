@@ -8,11 +8,11 @@ from kp_regression.data_pipe import BaseData
 
 DATA_FACTORY: T.Dict[str, T.Type[BaseData]] = {
     "KpMixedLags": KpMixedLags,
-    "KpMixedLagsSeq": KpMixedLagsSeq
+    "KpMixedLagsSeq": KpMixedLagsSeq,
 }
 
 POST_PROCESS_FACTORY: T.Dict[str, T.Callable[[NDArray], NDArray]] = {
     "KpRound": attach_kp_index_to_grid,
     "KpClip": clip_kp,
-    "Default": lambda x: x
+    "Default": lambda x: x,
 }

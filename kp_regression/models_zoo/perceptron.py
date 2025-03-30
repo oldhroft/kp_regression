@@ -228,6 +228,7 @@ class MLPClassMulti(BaseModel):
         path_scaler = os.path.join(dirpath, "scaler.sav")
         self.scaler = load(path_scaler)
 
+
 class MLPClass(BaseModel):
 
     def build(self) -> None:

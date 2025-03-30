@@ -46,12 +46,7 @@ def add_lags(
             columns.extend(tmp.columns)
             zipped = list(zip([i for _ in range(len(x.columns))], x.columns))
 
-            sort_order = dict(sort_order, **dict(
-                zip(
-                    list(tmp.columns), 
-                    zipped
-                )
-            ))
+            sort_order = dict(sort_order, **dict(zip(list(tmp.columns), zipped)))
 
             x = x.join(x.shift(lag).add_suffix(column_suffix))
 

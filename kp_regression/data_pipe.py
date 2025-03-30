@@ -124,7 +124,9 @@ class KpData(BaseData):
             drop=True
         )
 
-        data_train = self.process_data(raw_data_train, is_train=True, **self.pipe_params)
+        data_train = self.process_data(
+            raw_data_train, is_train=True, **self.pipe_params
+        )
         data_train.log("Train")
         data_test = self.process_data(raw_data_test, is_train=False, **self.pipe_params)
         data_test.log("Test")
@@ -154,7 +156,9 @@ class KpData(BaseData):
             drop=True
         )
 
-        data_train = self.process_data(raw_data_train, is_train=True, **self.pipe_params)
+        data_train = self.process_data(
+            raw_data_train, is_train=True, **self.pipe_params
+        )
         data_train.log("Train")
         data_test = self.process_data(raw_data_test, is_train=False, **self.pipe_params)
         data_test.log("Test")
