@@ -20,8 +20,11 @@ class StreamToLogger(object):  # pragma: no cover
         pass
 
 
-def config_logger(logger: logging.Logger, level=logging.INFO) -> None:
-    handler = logging.StreamHandler(sys.stdout)
+def config_logger(logger: logging.Logger, level=logging.INFO, stdout: bool = True) -> None:
+    if stdout:
+        handler = logging.StreamHandler(sys.stdout)
+    else:
+        handler = logging.StreamHandler()
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

@@ -17,6 +17,7 @@ experiments/*
 catboost_info/*
 run.sh
 *.zip
+*.parquet
 
 
 # Byte-compiled / optimized / DLL files
