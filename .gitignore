@@ -18,6 +18,8 @@ catboost_info/*
 run.sh
 *.zip
 *.parquet
+*.hdf
+*.HDF
 
 
 # Byte-compiled / optimized / DLL files

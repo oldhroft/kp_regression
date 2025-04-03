@@ -89,6 +89,7 @@ class BaseData(ABC):
 def read_data(path: str) -> DataFrame:
     data = read_csv(path, encoding="cp1251", na_values="N")
 
+    # anchor to the beginning of the interval
     data["dttm"] = data.apply(
         lambda y: datetime.datetime(
             int(y.year), int(y.month), int(y.day), int(y["hour from"]), 0
