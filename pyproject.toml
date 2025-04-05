@@ -38,5 +38,5 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 run = "kp_regression.run_experiment:run"
-loadace_soho = "kp_regression.load_ace_data_soho:download_ace_data_run"
+loadace_noaa = "kp_regression.load_ace_data_noaa:download_ace_data_run"
 loadace = "kp_regression.load_ace_data:download_ace_data_run"
