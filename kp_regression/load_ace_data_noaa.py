@@ -18,7 +18,7 @@ logger = logging.getLogger()
 
 
 INIT_SCHEMA = {
-    "ace_mag_1m": pl.Schema(
+    "ace_mag": pl.Schema(
         {
             "year": pl.Int32(),
             "month": pl.Int32(),
@@ -35,7 +35,7 @@ INIT_SCHEMA = {
             "lon": pl.Float64(),
         }
     ),
-    "ace_swepam_1m": pl.Schema(
+    "ace_swepam": pl.Schema(
         {
             "year": pl.Int32(),
             "month": pl.Int32(),
@@ -52,7 +52,7 @@ INIT_SCHEMA = {
 }
 
 SCHEMA = {
-    "ace_mag_1m": pl.Schema(
+    "ace_mag": pl.Schema(
         {
             "dttm": pl.Datetime(),
             "status": pl.Int16(),
@@ -64,7 +64,7 @@ SCHEMA = {
             "lon": pl.Float64(),
         }
     ),
-    "ace_swepam_1m": pl.Schema(
+    "ace_swepam": pl.Schema(
         {
             "dttm": pl.Datetime(),
             "status": pl.Int16(),
@@ -75,20 +75,31 @@ SCHEMA = {
     ),
 }
 
-FILE_FMT = "https://sohoftp.nascom.nasa.gov/sdb/goes/ace/daily/{dt}_{data_type}.txt"
+FILE_FMT = (
+    "https://sohoftp.nascom.nasa.gov/sdb/goes/ace/{agg_level}/{dt}_{data_type}.txt"
+)
 
 READ_CFG = dict(
     comment_prefix="#", skip_lines=2, has_header=False, new_columns=["data"]
 )
 
-TYPES = ["ace_swepam_1m", "ace_mag_1m"]
+TYPES = ["ace_swepam", "ace_mag"]
+FREQS = ["1m", "1h"]
 
-DataOptions = T.Literal["ace_swepam_1m", "ace_mag_1m"]
+DataOptions = T.Literal["ace_swepam", "ace_mag"]
+FreqOptions = T.Literal["1m", "1h"]
 
 
 def process_data(
-    data: pl.LazyFrame, init_schema: pl.Schema, schema: pl.Schema
+    data: pl.LazyFrame,
+    init_schema: pl.Schema,
+    schema: pl.Schema,
+    from_date: str,
+    to_date: str,
 ) -> pl.LazyFrame:
+
+    from_dttm = datetime.datetime.fromisoformat(from_date)
+    to_dttm = datetime.datetime.fromisoformat(to_date)
 
     return (
         data.with_columns(
@@ -116,21 +127,17 @@ def process_data(
         )
         .select(schema.names())
         .cast(schema)
+        .filter(pl.col("dttm").is_between(from_dttm, to_dttm))
     )
 
 
-def load_data(
-    path: str, init_schema: pl.Schema, schema: pl.Schema, **read_cfg
-) -> pl.LazyFrame:
+def load_data(path: str, **read_cfg) -> pl.LazyFrame:
 
     try:
-        df_raw = pl.read_csv(path, **read_cfg).lazy()
+        df = pl.read_csv(path, **read_cfg).lazy()
     except HTTPError as e:
         logger.info("not found skipping file %s", path)
-        df_raw = pl.LazyFrame([], schema=pl.Schema({"data": pl.String}))
-
-    df = process_data(df_raw, init_schema=init_schema, schema=schema)
-
+        df = pl.LazyFrame([], schema=pl.Schema({"data": pl.String}))
     return df
 
 
@@ -138,55 +145,89 @@ def get_file_range(
     from_date: str,
     to_date: str,
     out_fmt: str = "%Y%m%d",
-    data_type: DataOptions = "ace_swepam_1m",
+    data_type: DataOptions = "ace_swepam",
+    freq: FreqOptions = "1d",
 ) -> T.List[str]:
+
+    agg_level = "monthly" if freq == "1d" else "daily"
 
     from_dttm = datetime.datetime.fromisoformat(from_date)
     to_dttm = datetime.datetime.fromisoformat(to_date)
 
-    days = (to_dttm - from_dttm).days
+    if freq == "1h":
+        days = (to_dttm - from_dttm).days
+        return [
+            FILE_FMT.format(
+                dt=(from_dttm + datetime.timedelta(days=i)).strftime(out_fmt),
+                data_type=data_type,
+                agg_level=agg_level,
+            )
+            for i in range(days + 1)
+        ]
+    else:
+        from dateutil.relativedelta import relativedelta
 
-    return [
-        FILE_FMT.format(
-            dt=(from_dttm + datetime.timedelta(days=i)).strftime(out_fmt),
-            data_type=data_type,
-        )
-        for i in range(days)
-    ]
+        from_dt = from_dttm.date().replace(day=1)
+        to_dt = to_dttm.date().replace(day=1)
+
+        months = (to_dt.year - from_dt.year) * 12 + from_dt.month - to_dt.month
+        return [
+            FILE_FMT.format(
+                dt=(from_dttm + relativedelta(months=1)).strftime(out_fmt),
+                data_type=data_type,
+                agg_level=agg_level,
+            )
+            for i in range(months + 1)
+        ]
 
 
 def download_ace_data(
-    from_date: str, to_date: str, output_folder: str, data_type: str
+    from_date: str, to_date: str, output_folder: str, data_type: str, freq: str
 ) -> None:
 
     if data_type not in TYPES:
         raise ValueError(
             f"Unknown data: {data_type}, possible data types: {';'.join(TYPES)}"
         )
+    if freq not in FREQS:
+        raise ValueError(
+            f"Unknown data: {freq}, possible data types: {';'.join(FREQS)}"
+        )
 
     config_logger(logger, stdout=False)
 
     rng = get_file_range(from_date=from_date, to_date=to_date, data_type=data_type)
 
-    logger.info("Collecting data for %s from %s to %s", data_type, from_date, to_date)
+    logger.info(
+        "Collecting data for %s (freq %s) from %s to %s, total %s files",
+        data_type,
+        freq,
+        from_date,
+        to_date,
+        len(rng),
+    )
 
     data_lst: T.List[pl.LazyFrame] = Parallel(n_jobs=-1)(
         map(
-            lambda x: delayed(load_data)(
-                x,
-                init_schema=INIT_SCHEMA[data_type],
-                schema=SCHEMA[data_type],
-                **READ_CFG,
-            ),
+            lambda x: delayed(load_data)(x, **READ_CFG),
             tqdm(rng),
         )
     )
 
     logger.info("Concatenating data, got %s items", len(data_lst))
+
     data = pl.concat(data_lst)
 
+    data = process_data(
+        data,
+        init_schema=INIT_SCHEMA[data_type],
+        schema=SCHEMA[data_type],
+        from_date=from_date,
+        to_date=to_date,
+    )
+
     path = os.path.join(
-        output_folder, f"data_{data_type}_{from_date}_{to_date}.parquet"
+        output_folder, f"data_{data_type}_{freq}_{from_date}_{to_date}.parquet"
     )
     os.makedirs(output_folder, exist_ok=True)
 
@@ -211,12 +252,19 @@ def download_ace_data(
     type=click.STRING,
     required=True,
 )
+@click.option(
+    "--freq",
+    help=f"Which frequency to download {';'.join(FREQS)}",
+    type=click.STRING,
+    required=True,
+)
 def download_ace_data_run(
-    from_date: str, to_date: str, output_folder: str, data_type: str
+    from_date: str, to_date: str, output_folder: str, data_type: str, freq: str
 ) -> None:
     download_ace_data(
         from_date=from_date,
         to_date=to_date,
         output_folder=output_folder,
         data_type=data_type,
+        freq=freq,
     )
