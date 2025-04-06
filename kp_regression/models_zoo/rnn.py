@@ -17,6 +17,7 @@ from kp_regression.data_pipe import Dataset
 from kp_regression.models_zoo.torch_common import (
     TorchModelParams,
     TrainingModule3Inputs,
+    TrainingModule4Inputs,
     get_dataloader_from_dataset_tuple,
     build_callbacks,
 )
@@ -101,7 +102,73 @@ class LSTM(nn.Module):
         return self.head(flattaned)
 
 
+class LSTM5m(nn.Module):
+    def __init__(
+        self,
+        input_shape1: T.Tuple[int],
+        input_shape2: T.Tuple[int],
+        input_shape3: T.Tuple[int],
+        input_shape4: T.Tuple[int],
+        hidden_size1: int,
+        hidden_size2: int,
+        hidden_size3: int,
+        num_layers1: int,
+        num_layers2: int,
+        num_layers3: int,
+        layers: T.List[int],
+        layers_head: T.List[int],
+        bidirectional: bool = False,
+    ) -> None:
+        super().__init__()
+
+        self.rnn1 = nn.LSTM(
+            input_size=input_shape1[0],
+            hidden_size=hidden_size1,
+            num_layers=num_layers1,
+            batch_first=True,
+            bidirectional=bidirectional,
+        )
+        self.rnn2 = nn.LSTM(
+            input_size=input_shape2[0],
+            hidden_size=hidden_size2,
+            num_layers=num_layers2,
+            batch_first=True,
+            bidirectional=bidirectional,
+        )
+
+        self.rnn3 = nn.LSTM(
+            input_size=input_shape3[0],
+            hidden_size=hidden_size3,
+            num_layers=num_layers3,
+            batch_first=True,
+            bidirectional=bidirectional,
+        )
+        self.net4 = get_fc_net(input_shape=input_shape4, layers=layers)
+
+        mult = 2 if bidirectional else 1
+
+        input_shape_fc = (
+            mult * hidden_size1 + mult * hidden_size2 + mult * hidden_size3 + layers[-1]
+        )
+
+        self.head = get_fc_net(
+            input_shape=(input_shape_fc,), layers=layers_head, last=True
+        )
+
+    def forward(self, x1, x2, x3, x4):
+        y1, _ = self.rnn1(x1.transpose(2, 1))
+        y2, _ = self.rnn2(x2.transpose(2, 1))
+        y3, _ = self.rnn3(x3.transpose(2, 1))
+
+        y4 = self.net4(x4)
+
+        flattaned = torch.concat([y1[:, -1, :], y2[:, -1, :], y3[:, -1, :], y4], dim=1)
+
+        return self.head(flattaned)
+
+
 class LSTM3Inputs(BaseModel):
+    training_module_cls = TrainingModule3Inputs
 
     def build(self) -> None:
         self.model_params = TorchModelParams(**self.model_params)
@@ -128,7 +195,7 @@ class LSTM3Inputs(BaseModel):
             and isinstance(ds.X[0], ndarray)
             and isinstance(ds.X[1], ndarray)
             and isinstance(ds.X[2], ndarray)
-        ), "Wrong dataset for conv net"
+        ), "Wrong dataset for rnn net"
 
         if test:
             assert ds.y is not None, "y should not be None"
@@ -177,7 +244,7 @@ class LSTM3Inputs(BaseModel):
 
             callbacks = build_callbacks(checkpoints_folder_i, self.model_params)
 
-            training_module = TrainingModule3Inputs(
+            training_module = self.training_module_cls(
                 self.models[dim_i], **self.model_params.train_params
             )
 
@@ -203,7 +270,7 @@ class LSTM3Inputs(BaseModel):
 
             best_model: str = callbacks[0].best_model_path
 
-            training_module = TrainingModule3Inputs.load_from_checkpoint(
+            training_module = self.training_module_cls.load_from_checkpoint(
                 best_model, model=self.models[dim_i], **self.model_params.train_params
             )
 
@@ -218,7 +285,7 @@ class LSTM3Inputs(BaseModel):
         for dim_i in range(self.output_shape[0]):
             logging.info("Predicting for dim %s", dim_i)
 
-            module = TrainingModule3Inputs(
+            module = self.training_module_cls(
                 self.models[dim_i], **self.model_params.train_params
             )
 
@@ -249,3 +316,37 @@ class LSTM3Inputs(BaseModel):
     def load(self, path) -> None:
         for i, model in enumerate(self.models):
             model.load_state_dict(torch.load(os.path.join(path, f"weights{i}.pth")))
+
+
+class LSTM4Inputs(LSTM3Inputs):
+    training_module_cls = TrainingModule4Inputs
+
+    def build(self) -> None:
+        self.model_params = TorchModelParams(**self.model_params)
+
+        self.models = [
+            LSTM5m(
+                input_shape1=self.shape[0],
+                input_shape2=self.shape[1],
+                input_shape3=self.shape[2],
+                input_shape4=self.shape[3],
+                **self.model_params.model_params,
+            )
+            for i in range(self.output_shape[0])
+        ]
+
+        logging.info("Shape %s", self.shape)
+
+    def _check(self, ds: T.Optional[Dataset], test=False) -> None:
+
+        assert ds is None or (
+            isinstance(ds.X, tuple)
+            and len(ds.X) == 4
+            and isinstance(ds.X[0], ndarray)
+            and isinstance(ds.X[1], ndarray)
+            and isinstance(ds.X[2], ndarray)
+            and isinstance(ds.X[3], ndarray)
+        ), "Wrong dataset for rnn net"
+
+        if test:
+            assert ds.y is not None, "y should not be None"

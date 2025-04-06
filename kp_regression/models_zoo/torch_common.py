@@ -57,7 +57,9 @@ class TrainingModule(LightningModule):
 
         return loss
 
-    def validation_step(self, batch: Tensor, batch_idx: T.Any) -> Tensor:
+    def validation_step(
+        self, batch: T.Tuple[Tensor, Tensor], batch_idx: T.Any
+    ) -> Tensor:
         x, y = batch
         y_pred: Tensor = self.model(x)
 
@@ -136,7 +138,9 @@ class TrainingModule3Inputs(LightningModule):
 
         return loss
 
-    def validation_step(self, batch: Tensor, batch_idx: T.Any) -> Tensor:
+    def validation_step(
+        self, batch: T.Tuple[Tensor, Tensor, Tensor, Tensor], batch_idx: T.Any
+    ) -> Tensor:
         x1, x2, x3, y = batch
         y_pred: Tensor = self.model(x1, x2, x3)
 
@@ -187,6 +191,42 @@ class TrainingModule3Inputs(LightningModule):
 
         return [optimizer], [lr_dict]
 
+
+class TrainingModule4Inputs(TrainingModule3Inputs):
+
+    def training_step(self, batch: Tensor, batch_idx: T.Any) -> Tensor:
+        x1, x2, x3, x4, y = batch
+
+        y_pred: Tensor = self.model(x1, x2, x3, x4)
+
+        loss = self.loss(y_pred, y)
+
+        metrics = {"train_loss": loss}
+
+        self.log_dict(metrics, on_step=False, on_epoch=True, logger=True)
+
+        return loss
+
+    def validation_step(
+        self, batch: T.Tuple[Tensor, Tensor, Tensor, Tensor, Tensor], batch_idx: T.Any
+    ) -> Tensor:
+        x1, x2, x3, x4, y = batch
+        y_pred: Tensor = self.model(x1, x2, x3, x4)
+
+        loss = self.loss(y_pred, y)
+
+        metrics = {"val_loss": loss}
+
+        self.log_dict(metrics, on_step=False, on_epoch=True, logger=True)
+
+        lr = self.trainer.optimizers[0].param_groups[0]["lr"]
+        self.log("learning_rate", lr, on_step=False, on_epoch=True, prog_bar=True)
+
+        return loss
+
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
+        x1, x2, x3, x4 = batch
+        return self.model(x1, x2, x3, x4)
 
 def get_dataloader_from_dataset(
     X: NDArray,
