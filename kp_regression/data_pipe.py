@@ -190,6 +190,7 @@ class KpData(BaseData):
 class KpData5mConfig:
     path_base: str
     path_5m: str
+    path_1h: str
 
 
 class KpData5m(BaseData):
@@ -203,12 +204,21 @@ class KpData5m(BaseData):
 
             self.raw_data_base = read_data(path_cfg.path_base)
             self.raw_data_5m = read_parquet(path_cfg.path_5m)
+            self.raw_data_1h = read_parquet(path_cfg.path_1h)
             self.raw_data_5m["year"] = self.raw_data_5m.dttm.dt.year
+            self.raw_data_1h["year"] = self.raw_data_1h.dttm.dt.year
         else:
             raise ValueError("Path should be config KpData5mAggConfig")
 
     @abstractmethod
-    def process_data(self, df, df_5min, is_train: bool, **kwargs) -> Dataset: ...
+    def process_data(
+        self,
+        df: DataFrame,
+        df_1h: DataFrame,
+        df_5min: DataFrame,
+        is_train: bool,
+        **kwargs,
+    ) -> Dataset: ...
 
     def get_train_test(
         self, year_test: int, year_val: int
@@ -230,12 +240,27 @@ class KpData5m(BaseData):
             self.raw_data_5m.year >= year_test
         ].reset_index(drop=True)
 
+        raw_data_1h_train = self.raw_data_1h[
+            self.raw_data_1h.year < year_test
+        ].reset_index(drop=True)
+        raw_data_1h_test = self.raw_data_1h[
+            self.raw_data_1h.year >= year_test
+        ].reset_index(drop=True)
+
         data_train = self.process_data(
-            raw_data_base_train, raw_data_5m_train, is_train=True, **self.pipe_params
+            raw_data_base_train,
+            raw_data_1h_train,
+            raw_data_5m_train,
+            is_train=True,
+            **self.pipe_params,
         )
         data_train.log("Train")
         data_test = self.process_data(
-            raw_data_base_test, raw_data_5m_test, is_train=False, **self.pipe_params
+            raw_data_base_test,
+            raw_data_1h_test,
+            raw_data_5m_test,
+            is_train=False,
+            **self.pipe_params,
         )
         data_test.log("Test")
 
@@ -258,7 +283,8 @@ class KpData5m(BaseData):
             self.raw_data_base.year < year_val
         ].reset_index(drop=True)
         raw_data_val = self.raw_data_base[
-            (self.raw_data_base.year >= year_val) & (self.raw_data_base.year < year_test)
+            (self.raw_data_base.year >= year_val)
+            & (self.raw_data_base.year < year_test)
         ].reset_index(drop=True)
         raw_data_test = self.raw_data_base[
             (self.raw_data_base.year >= year_test)
@@ -270,21 +296,30 @@ class KpData5m(BaseData):
         raw_data_5m_val = self.raw_data_5m[
             (self.raw_data_5m.year >= year_val) & (self.raw_data_5m.year < year_test)
         ].reset_index(drop=True)
-
         raw_data_5m_test = self.raw_data_5m[
             self.raw_data_5m.year >= year_test
         ].reset_index(drop=True)
 
+        raw_data_1h_train = self.raw_data_1h[
+            self.raw_data_1h.year < year_val
+        ].reset_index(drop=True)
+        raw_data_1h_val = self.raw_data_1h[
+            (self.raw_data_1h.year >= year_val) & (self.raw_data_1h.year < year_test)
+        ].reset_index(drop=True)
+        raw_data_1h_test = self.raw_data_1h[
+            self.raw_data_1h.year >= year_test
+        ].reset_index(drop=True)
+
         data_train = self.process_data(
-            raw_data_train, raw_data_5m_train, is_train=True, **self.pipe_params
+            raw_data_train, raw_data_1h_train, raw_data_5m_train, is_train=True, **self.pipe_params
         )
         data_train.log("Train")
         data_test = self.process_data(
-            raw_data_test, raw_data_5m_test, is_train=False, **self.pipe_params
+            raw_data_test, raw_data_1h_test, raw_data_5m_test, is_train=False, **self.pipe_params
         )
         data_test.log("Test")
         data_val = self.process_data(
-            raw_data_val, raw_data_5m_val, is_train=False, **self.pipe_params
+            raw_data_val, raw_data_1h_val, raw_data_5m_val, is_train=False, **self.pipe_params
         )
         data_val.log("Val")
 

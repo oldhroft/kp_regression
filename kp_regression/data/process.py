@@ -17,13 +17,12 @@ def process_data_standard(
     hour_type: T.Optional[str] = None,
 ) -> Dataset:
 
-    # print(data.columns)
-
     if hour_type is not None and hour_type not in ("T0", "T1", "T2"):
 
         raise ValueError(f"Unknown hour type {hour_type}")
 
     data = data.copy()
+
     data["t0_flg"] = (data["hour to"]) % 3 == 0
     data["t1_flg"] = (data["hour to"] + 1) % 3 == 0
     data["t2_flg"] = (data["hour to"] + 2) % 3 == 0
@@ -166,7 +165,7 @@ class KpMixedLags(KpData):
         hour_type: T.Optional[str] = None,
     ) -> Dataset:
         return process_data_standard(
-            data=df,
+            data=df.sort_values(by="dttm").reset_index(drop=True),
             lags_kp=lags_kp,
             lags_h=lags_h,
             features_h=features_h,
@@ -362,7 +361,7 @@ class KpMixedLagsSeq(KpData):
             scalers = self.scalers
 
         res, scalers = process_data_sequence(
-            data=df,
+            data=df.sort_values(by="dttm").reset_index(drop=True),
             is_train=is_train,
             lags_kp=lags_kp,
             lags_h=lags_h,
@@ -382,11 +381,13 @@ class Kp5mAggMixedLags(KpData5m):
     def process_data(
         self,
         df: DataFrame,
+        df_1h: DataFrame,
         df_5m: DataFrame,
         is_train: bool,
         lags_kp: int,
         lags_h: int,
         features_h: list,
+        features_1h_ace: list,
         features_5m_agg: list,
         agg_list: T.List[str],
         agg_quantiles: T.List[float],
@@ -397,8 +398,18 @@ class Kp5mAggMixedLags(KpData5m):
         from pandas import Grouper
         from numpy import NaN
 
+        save_cols = ["dttm", "hour from", "hour to", "Kp*10"]
+
+        df_5m = df_5m.sort_values(by="dttm").reset_index(drop=True)
+        df_1h = df_1h.sort_values(by="dttm").reset_index(drop=True)
+        df = df.sort_values(by="dttm").reset_index(drop=True)
+
         df_5m[features_5m_agg] = df_5m[features_5m_agg].where(
             df_5m[features_5m_agg] > -999.9, NaN
+        )
+
+        df_1h[features_1h_ace] = df_1h[features_1h_ace].where(
+            df_5m[features_1h_ace] > -999.9, NaN
         )
 
         df_5m_agg = concat(
@@ -421,13 +432,22 @@ class Kp5mAggMixedLags(KpData5m):
 
         agg_features = list(df_5m_agg.columns)
 
-        df_result = df.merge(df_5m_agg.reset_index(), how="left", on="dttm")
+        intersecting_columns = set(features_1h_ace).intersection(features_h)
+
+        if len(intersecting_columns) > 0:
+            raise ValueError("Identical column in two different sources")
+
+        df_result = (
+            df[save_cols + features_h]
+            .merge(df_5m_agg[agg_features].reset_index(), how="left", on="dttm")
+            .merge(df_1h[features_1h_ace + ["dttm"]], how="left", on="dttm")
+        )
 
         return process_data_standard(
             data=df_result,
             lags_kp=lags_kp,
             lags_h=lags_h,
-            features_h=features_h + agg_features,
+            features_h=features_h + agg_features + features_1h_ace,
             features_other=features_other,
             n_targets=n_targets,
             hour_type=None,
@@ -617,9 +637,7 @@ def process_data_sequence_5min(
     )
 
     data_target_3h_np = (
-        intersecting_dttms.merge(data_target_3h, how="left", on="dttm")[
-            target_3h
-        ]
+        intersecting_dttms.merge(data_target_3h, how="left", on="dttm")[target_3h]
         .ffill()
         .values.astype("float64")
     )
@@ -666,10 +684,11 @@ def process_data_sequence_5min(
     ), (scaler1, scaler2, scaler3, scaler4)
 
 
-class Kp5mMixedLags(KpData5m):
+class Kp5mMixedLagsSeq(KpData5m):
     def process_data(
         self,
         df: DataFrame,
+        df_1h: DataFrame,
         df_5m: DataFrame,
         is_train: bool,
         lags_5m: int,
@@ -677,6 +696,7 @@ class Kp5mMixedLags(KpData5m):
         lags_h: int,
         features_h: list,
         features_5m: list,
+        features_1h_ace: list,
         features_other: list,
         n_targets: int,
         scale: bool = True,
@@ -692,14 +712,16 @@ class Kp5mMixedLags(KpData5m):
         else:
             scalers = self.scalers
 
+        df = df.merge(df_1h[features_1h_ace + ["dttm"]], how="left", on="dttm")
+
         res, scalers = process_data_sequence_5min(
-            data=df,
-            data_5m=df_5m,
+            data=df.sort_values(by="dttm").reset_index(drop=True),
+            data_5m=df_5m.sort_values(by="dttm").reset_index(drop=True),
             is_train=is_train,
             lags_kp=lags_kp,
             lags_h=lags_h,
             lags_5m=lags_5m,
-            features_h=features_h,
+            features_h=features_h + features_1h_ace,
             features_5m=features_5m,
             features_other=features_other,
             n_targets=n_targets,
