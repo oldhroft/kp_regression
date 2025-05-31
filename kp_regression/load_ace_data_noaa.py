@@ -75,9 +75,7 @@ SCHEMA = {
     ),
 }
 
-FILE_FMT = (
-    "https://sohoftp.nascom.nasa.gov/sdb/goes/ace/{agg_level}/{dt}_{data_type}.txt"
-)
+FILE_FMT = "https://sohoftp.nascom.nasa.gov/sdb/goes/ace/{agg_level}/{dt}_{data_type}_{freq}.txt"
 
 READ_CFG = dict(
     comment_prefix="#", skip_lines=2, has_header=False, new_columns=["data"]
@@ -85,6 +83,8 @@ READ_CFG = dict(
 
 TYPES = ["ace_swepam", "ace_mag"]
 FREQS = ["1m", "1h"]
+
+OUT_FMT = {"1h": "%Y%m", "1m": "%Y%m%d"}
 
 DataOptions = T.Literal["ace_swepam", "ace_mag"]
 FreqOptions = T.Literal["1m", "1h"]
@@ -144,23 +144,26 @@ def load_data(path: str, **read_cfg) -> pl.LazyFrame:
 def get_file_range(
     from_date: str,
     to_date: str,
-    out_fmt: str = "%Y%m%d",
     data_type: DataOptions = "ace_swepam",
-    freq: FreqOptions = "1d",
+    freq: FreqOptions = "1h",
 ) -> T.List[str]:
 
-    agg_level = "monthly" if freq == "1d" else "daily"
+    agg_level = "monthly" if freq == "1h" else "daily"
 
     from_dttm = datetime.datetime.fromisoformat(from_date)
     to_dttm = datetime.datetime.fromisoformat(to_date)
 
-    if freq == "1h":
+    out_fmt = OUT_FMT[freq]
+
+    if freq == "1m":
         days = (to_dttm - from_dttm).days
+
         return [
             FILE_FMT.format(
                 dt=(from_dttm + datetime.timedelta(days=i)).strftime(out_fmt),
                 data_type=data_type,
                 agg_level=agg_level,
+                freq=freq,
             )
             for i in range(days + 1)
         ]
@@ -170,12 +173,13 @@ def get_file_range(
         from_dt = from_dttm.date().replace(day=1)
         to_dt = to_dttm.date().replace(day=1)
 
-        months = (to_dt.year - from_dt.year) * 12 + from_dt.month - to_dt.month
+        months = (to_dt.year - from_dt.year) * 12 + to_dt.month - from_dt.month
         return [
             FILE_FMT.format(
-                dt=(from_dttm + relativedelta(months=1)).strftime(out_fmt),
+                dt=(from_dttm + relativedelta(months=i)).strftime(out_fmt),
                 data_type=data_type,
                 agg_level=agg_level,
+                freq=freq,
             )
             for i in range(months + 1)
         ]
@@ -197,6 +201,13 @@ def download_ace_data(
     config_logger(logger, stdout=False)
 
     rng = get_file_range(from_date=from_date, to_date=to_date, data_type=data_type)
+
+    if len(rng) == 0:
+        logger.info("No files for this period found, exiting")
+        return
+
+    for link in rng:
+        logger.info("Link %s is added to the download list", link)
 
     logger.info(
         "Collecting data for %s (freq %s) from %s to %s, total %s files",
@@ -230,6 +241,16 @@ def download_ace_data(
         output_folder, f"data_{data_type}_{freq}_{from_date}_{to_date}.parquet"
     )
     os.makedirs(output_folder, exist_ok=True)
+
+    stat = data.select(
+        pl.len().alias("cnt_records"),
+        pl.min("dttm").alias("min_dttm"),
+        pl.max("dttm").alias("max_dttm"),
+    ).collect()
+
+    logger.info("Total records in data %s", stat["cnt_records"].item())
+    logger.info("Min dttm in data %s", stat["min_dttm"].item())
+    logger.info("Max dttm in data %s", stat["max_dttm"].item())
 
     logger.info("Saving data to %s", path)
 
