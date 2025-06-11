@@ -4,21 +4,23 @@ from sklearn.preprocessing import StandardScaler
 
 from pandas import DataFrame, concat
 from kp_regression.data_pipe import KpData, Dataset, KpData5m
-from kp_regression.data_utils import add_lags
+from kp_regression.data_utils import add_lags, add_diffs
 
 
 def process_data_standard(
     data: DataFrame,
     lags_kp: int,
     lags_h: int,
-    features_h: list,
-    features_other: list,
+    features_h: T.List[str],
+    features_other: T.List[str],
     n_targets: int,
+    diff_features: T.List[str],
+    diff_kp: bool,
+    lag_diffs: bool,
     hour_type: T.Optional[str] = None,
 ) -> Dataset:
 
     if hour_type is not None and hour_type not in ("T0", "T1", "T2"):
-
         raise ValueError(f"Unknown hour type {hour_type}")
 
     data = data.copy()
@@ -39,38 +41,66 @@ def process_data_standard(
 
     flgs = ["t0_flg", "t1_flg", "t2_flg"]
 
+    base_df = data[features_h + features_other + flgs + meta_cols].ffill()
+
+    diff_features_list: T.List[str] = []
+    if len(diff_features) > 0:
+        base_df, diff_features_list = add_diffs(
+            base_df, subset=diff_features, lags=1, trim=True, suffix_name="diff"
+        )
+
+    lag_subset = features_h.copy()
+    if lag_diffs and diff_features_list:
+        lag_subset += diff_features_list
+
     data_lagged, features_h_list = add_lags(
-        data[features_h + features_other + flgs + meta_cols].ffill(),
-        subset=features_h,
+        base_df,
+        subset=lag_subset,
         forward=False,
         lags=lags_h,
         trim=True,
     )
 
-    data_lagged_3h_t0, features_3h_list = add_lags(
-        data.loc[data.t0_flg, ["dttm", "Kp"]], subset=["Kp"], lags=lags_kp, trim=True
+    kp_list = ["Kp"]
+    kp_diff_features = []
+    data_lagged_3h_t1 = data.loc[data.t1_flg, ["dttm", "Kp"]]
+    if diff_kp:
+        data_lagged_3h_t1, kp_diff_features = add_diffs(
+            data_lagged_3h_t1, subset=["Kp"], lags=1, trim=True, suffix_name="diff"
+        )
+        kp_list = kp_list + kp_diff_features
+
+    kp_lag_subset = ["Kp"]
+
+    if lag_diffs:
+        kp_lag_subset += kp_diff_features
+    else:
+        kp_lag_subset = kp_list
+
+    data_lagged_3h_t1, features_3h_list = add_lags(
+        data_lagged_3h_t1, subset=kp_lag_subset, lags=lags_kp, trim=True
     )
 
-    data_lagged_3h_t1, _ = add_lags(
-        data.loc[data.t1_flg, ["dttm", "Kp"]]
-        .assign(Kp=lambda x: x.Kp.shift())
-        .iloc[1:],
-        subset=["Kp"],
-        lags=lags_kp,
-        trim=True,
+    data_lagged_3h_t0 = data.loc[data.t0_flg, ["dttm", "Kp"]]
+
+    if diff_kp:
+        data_lagged_3h_t0, _ = add_diffs(
+            data_lagged_3h_t0, subset=["Kp"], lags=1, trim=True, suffix_name="diff"
+        )
+
+    data_lagged_3h_t0, features_3h_list = add_lags(
+        data_lagged_3h_t0, subset=kp_lag_subset, lags=lags_kp, trim=True
     )
+
+    data_lagged_3h_t2 = data.loc[data.t2_flg, ["dttm", "Kp"]]
+    if diff_kp:
+        data_lagged_3h_t2, _ = add_diffs(
+            data_lagged_3h_t2, subset=["Kp"], lags=1, trim=True, suffix_name="diff"
+        )
 
     data_lagged_3h_t2, _ = add_lags(
-        data.loc[
-            data.t2_flg,
-            [
-                "dttm",
-                "Kp",
-            ],
-        ]
-        .assign(Kp=lambda x: x.Kp.shift())
-        .iloc[1:],
-        subset=["Kp"],
+        data_lagged_3h_t2.assign(Kp=lambda x: x.Kp.shift()).iloc[1:],
+        subset=kp_lag_subset,
         lags=lags_kp,
         trim=True,
     )
@@ -104,13 +134,7 @@ def process_data_standard(
     )
 
     data_target_3h_t2, _ = add_lags(
-        data.loc[
-            data.t2_flg,
-            [
-                "dttm",
-                "Kp",
-            ],
-        ]
+        data.loc[data.t2_flg, ["dttm", "Kp"]]
         .assign(Kp=lambda x: x.Kp.shift())
         .iloc[1:],
         subset=["Kp"],
@@ -137,9 +161,17 @@ def process_data_standard(
     if hour_type is not None:
         result = result.loc[result.hour_type == hour_type]
 
+    # Use both original features and their diffs in the final dataset
     result_features = (
-        ["Kp"] + features_other + features_h + features_h_list + features_3h_list + flgs
+        ["Kp"]
+        + features_other
+        + features_h
+        + diff_features_list
+        + features_h_list
+        + features_3h_list
+        + flgs
     )
+
 
     return Dataset(
         X=result[result_features].ffill().astype("float64").values,
@@ -163,6 +195,9 @@ class KpMixedLags(KpData):
         features_other: list,
         n_targets: int,
         hour_type: T.Optional[str] = None,
+        diff_kp: bool = False,
+        lag_diffs: bool = False,
+        diff_features: T.List[str] = [],
     ) -> Dataset:
         return process_data_standard(
             data=df.sort_values(by="dttm").reset_index(drop=True),
@@ -172,6 +207,9 @@ class KpMixedLags(KpData):
             features_other=features_other,
             n_targets=n_targets,
             hour_type=hour_type,
+            diff_kp=diff_kp,
+            lag_diffs=lag_diffs,
+            diff_features=diff_features,
         )
 
 

@@ -50,8 +50,6 @@ def add_lags(
 
             x = x.join(x.shift(lag).add_suffix(column_suffix))
 
-        columns = x.columns.tolist()
-
     elif isinstance(subset, list):
         for i in range(1, lags + 1):
             lag = -i if forward else i
@@ -80,6 +78,49 @@ def add_lags(
     if sort_lags:
         columns = sorted(columns, key=lambda x: sort_order[x], reverse=True)
     return _trim(x, forward, trim, lags), columns
+
+
+def add_diffs(
+    df: DataFrame,
+    subset: T.Optional[T.Union[str, T.List[str]]] = None,
+    lags: int = 1,
+    trim: bool = False,
+    suffix_name: T.Optional[str] = None,
+) -> T.Tuple[DataFrame, T.List[str]]:
+    if suffix_name is None:
+        suffix_name = "diff"
+
+    x = df.copy()
+    digits = len(str(lags))
+    columns = []
+
+    if not isinstance(lags, int):
+        raise ValueError(f"Lags should be int, {type(lags)} type provided")
+    elif lags < 1:
+        raise ValueError("Lags should be positive")
+    elif lags == 0:
+        return x, []
+
+    if subset is None:
+        subset_cols = x.columns.tolist()
+    elif isinstance(subset, str):
+        subset_cols = [subset]
+    elif isinstance(subset, list):
+        subset_cols = subset
+    else:
+        raise ValueError(f"Subset should be str or list, provided type {type(subset)}")
+
+    for i in range(1, lags + 1):
+        index = str(i).zfill(digits)
+        suffix = f"_{suffix_name}_{index}"
+        diffed = x[subset_cols].diff(i).add_suffix(suffix)
+        columns.extend(diffed.columns)
+        x = x.join(diffed)
+
+    if trim:
+        x = x.iloc[lags:]
+
+    return x, columns
 
 
 def rolling_agg(
