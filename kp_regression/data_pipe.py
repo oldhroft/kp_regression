@@ -206,10 +206,6 @@ class KpData5m(BaseData):
             self.raw_data_5m = read_parquet(path_cfg.path_5m).sort_values(by="dttm").reset_index(drop=True)
             self.raw_data_1h = read_parquet(path_cfg.path_1h).sort_values(by="dttm").reset_index(drop=True)
 
-            # Mock filter: keep only data with year >= 2019
-            self.raw_data_base = self.raw_data_base[self.raw_data_base["dttm"].dt.year >= 2019].reset_index(drop=True)
-            self.raw_data_5m = self.raw_data_5m[self.raw_data_5m["dttm"].dt.year >= 2019].reset_index(drop=True)
-            self.raw_data_1h = self.raw_data_1h[self.raw_data_1h["dttm"].dt.year >= 2019].reset_index(drop=True)
             self.raw_data_5m["year"] = self.raw_data_5m.dttm.dt.year
             self.raw_data_1h["year"] = self.raw_data_1h.dttm.dt.year
         else:
