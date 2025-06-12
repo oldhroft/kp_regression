@@ -10,10 +10,10 @@ class BaseModel(ABC):
 
     def __init__(
         self,
-        shape: tuple,
+        shape: T.Tuple[int, ...],
         features: T.Optional[T.List[str]],
-        output_shape: tuple,
-        model_params: T.Dict,
+        output_shape: T.Tuple[int, ...],
+        model_params: T.Dict[str, T.Any],
         model_dir: str,
     ) -> None:
 
@@ -42,7 +42,7 @@ class BaseModel(ABC):
         raise NotImplementedError("Method not implemented")
 
     @abstractmethod
-    def cv(self, cv_params: T.Dict, ds: Dataset):
+    def cv(self, cv_params: T.Dict[str, T.Any], ds: Dataset):
         raise NotImplementedError("Method not implemented")
 
     @abstractmethod

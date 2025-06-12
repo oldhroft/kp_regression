@@ -3,15 +3,13 @@ from dataclasses import dataclass
 
 import torch.nn as nn
 import torch.optim as opt
-from numpy import ndarray
 from numpy.typing import NDArray
-from pytorch_lightning import LightningModule, Trainer
+from pytorch_lightning import LightningModule
 from pytorch_lightning.callbacks import Callback, ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch import Tensor, from_numpy
 from torch.utils.data import DataLoader, TensorDataset
 
-from kp_regression.data_pipe import Dataset
 from kp_regression.utils import safe_mkdir
 
 
@@ -123,7 +121,7 @@ class TrainingModule3Inputs(LightningModule):
         self.lr_reduce_patience = lr_reduce_patience
         self.loss = nn.MSELoss()
 
-    def training_step(self, batch: Tensor, batch_idx: T.Any) -> Tensor:
+    def training_step(self, batch: T.Tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
         x1, x2, x3, y = batch
 
         y_pred: Tensor = self.model(x1, x2, x3)
@@ -136,9 +134,7 @@ class TrainingModule3Inputs(LightningModule):
 
         return loss
 
-    def validation_step(
-        self, batch: T.Tuple[Tensor, Tensor, Tensor, Tensor], batch_idx: T.Any
-    ) -> Tensor:
+    def validation_step(self, batch: T.Tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
         x1, x2, x3, y = batch
         y_pred: Tensor = self.model(x1, x2, x3)
 
@@ -153,7 +149,7 @@ class TrainingModule3Inputs(LightningModule):
 
         return loss
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=0):
+    def predict_step(self, batch: T.Tuple[Tensor, ...], batch_idx, dataloader_idx=0):
         x1, x2, x3 = batch
         return self.model(x1, x2, x3)
 
@@ -192,7 +188,8 @@ class TrainingModule3Inputs(LightningModule):
 
 class TrainingModule4Inputs(TrainingModule3Inputs):
 
-    def training_step(self, batch: Tensor, batch_idx: T.Any) -> Tensor:
+    def training_step(self, batch: T.Tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
+
         x1, x2, x3, x4, y = batch
 
         y_pred: Tensor = self.model(x1, x2, x3, x4)
@@ -205,9 +202,7 @@ class TrainingModule4Inputs(TrainingModule3Inputs):
 
         return loss
 
-    def validation_step(
-        self, batch: T.Tuple[Tensor, Tensor, Tensor, Tensor, Tensor], batch_idx: T.Any
-    ) -> Tensor:
+    def validation_step(self, batch: T.Tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
         x1, x2, x3, x4, y = batch
         y_pred: Tensor = self.model(x1, x2, x3, x4)
 
@@ -255,7 +250,9 @@ def get_dataloader_from_dataset_tuple(
     return dl
 
 
-def build_callbacks(folder: str, cfg: TorchModelParams) -> T.List[Callback]:
+def build_callbacks(
+    folder: str, cfg: TorchModelParams
+) -> T.Tuple[ModelCheckpoint, EarlyStopping]:
 
     safe_mkdir(folder)
 
@@ -263,4 +260,4 @@ def build_callbacks(folder: str, cfg: TorchModelParams) -> T.List[Callback]:
 
     EarlyStoppingCallback = EarlyStopping(**cfg.early_stopping_cfg)
 
-    return [TrainingModuleCheckpoint, EarlyStoppingCallback]
+    return TrainingModuleCheckpoint, EarlyStoppingCallback
