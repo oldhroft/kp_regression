@@ -27,24 +27,24 @@ class BaseModel(ABC):
 
     @abstractmethod
     def build(self) -> None:
-        raise NotImplemented("Method not implemented")
+        raise NotImplementedError("Method not implemented")
 
     @abstractmethod
     def train(self, ds: Dataset, ds_val: T.Optional[Dataset] = None) -> None:
-        raise NotImplemented("Method not implemented")
+        raise NotImplementedError("Method not implemented")
 
     @abstractmethod
     def save(self, file_path: str) -> None:
-        raise NotImplemented("Method not implemented")
+        raise NotImplementedError("Method not implemented")
 
     @abstractmethod
     def predict(self, ds: Dataset) -> NDArray:
-        raise NotImplemented("Method not implemented")
+        raise NotImplementedError("Method not implemented")
 
     @abstractmethod
     def cv(self, cv_params: T.Dict, ds: Dataset):
-        raise NotImplemented("Method not implemented")
+        raise NotImplementedError("Method not implemented")
 
     @abstractmethod
     def load(self, path: str) -> None:
-        raise NotImplemented("Method not implemented")
+        raise NotImplementedError("Method not implemented")
