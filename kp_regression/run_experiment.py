@@ -1,20 +1,18 @@
-import typing as T
-
-import click
+import logging
 import os
-from numpy import savez_compressed
-
+import typing as T
 from dataclasses import asdict
 
-from kp_regression.config import Config
-from kp_regression.utils import safe_mkdir, add_unique_suffix, dump_json
-from kp_regression.logging_utils import config_logger
-from kp_regression.models_zoo import MODEL_FACTORY
-from kp_regression.base_model import BaseModel
-from kp_regression.data import DATA_FACTORY, POST_PROCESS_FACTORY
-from kp_regression.metrics import calculate_regression_metrics
+import click
+from numpy import savez_compressed
 
-import logging
+from kp_regression.base_model import BaseModel
+from kp_regression.config import Config
+from kp_regression.data import DATA_FACTORY, POST_PROCESS_FACTORY
+from kp_regression.logging_utils import config_logger
+from kp_regression.metrics import calculate_regression_metrics
+from kp_regression.models_zoo import MODEL_FACTORY
+from kp_regression.utils import add_unique_suffix, dump_json, safe_mkdir
 
 logger = logging.getLogger()
 

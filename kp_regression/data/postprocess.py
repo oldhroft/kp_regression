@@ -1,5 +1,5 @@
+from numpy import abs, array, clip, take_along_axis
 from numpy.typing import NDArray
-from numpy import array, abs, take_along_axis, clip
 
 INDICES = array(
     [

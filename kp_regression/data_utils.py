@@ -1,5 +1,6 @@
 import typing as T
-from pandas import DataFrame, Index #type: ignore
+
+from pandas import DataFrame, Index  # type: ignore
 
 
 def _trim(df: DataFrame, forward: bool, trim: bool, lags: int) -> DataFrame:

@@ -1,10 +1,10 @@
 import typing as T
 
-from sklearn.preprocessing import StandardScaler # type: ignore
+from pandas import DataFrame, concat  # type: ignore
+from sklearn.preprocessing import StandardScaler  # type: ignore
 
-from pandas import DataFrame, concat # type: ignore
-from kp_regression.data_pipe import KpData, Dataset, KpData5m
-from kp_regression.data_utils import add_lags, add_diffs
+from kp_regression.data_pipe import Dataset, KpData, KpData5m
+from kp_regression.data_utils import add_diffs, add_lags
 
 
 def process_data_standard(
@@ -428,8 +428,8 @@ class Kp5mAggMixedLags(KpData5m):
         **kwargs
     ) -> Dataset:
 
-        from pandas import Grouper
         from numpy import NaN
+        from pandas import Grouper
 
         save_cols = ["dttm", "hour from", "hour to", "Kp*10"]
 

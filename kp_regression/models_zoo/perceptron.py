@@ -1,35 +1,27 @@
-import typing as T
+import logging
 import os
+import typing as T
 
 import torch
-
-from numpy.typing import NDArray
 import torch.nn as nn
-from torch import save
-
-from sklearn.preprocessing import StandardScaler
+from joblib import dump, load
+from numpy import concatenate, ndarray
+from numpy.typing import NDArray
+from pytorch_lightning import Trainer
 from sklearn.model_selection import train_test_split
-
+from sklearn.preprocessing import StandardScaler
+from torch import save
 from torchsummary import summary
 
-
-from numpy import concatenate, ndarray
-
-from pytorch_lightning import Trainer
-
-from joblib import dump, load
-
 from kp_regression.base_model import BaseModel
-from kp_regression.utils import safe_mkdir
+from kp_regression.data_pipe import Dataset
 from kp_regression.models_zoo.torch_common import (
     TorchModelParams,
     TrainingModule,
-    get_dataloader_from_dataset,
     build_callbacks,
+    get_dataloader_from_dataset,
 )
-from kp_regression.data_pipe import Dataset
-
-import logging
+from kp_regression.utils import safe_mkdir
 
 
 class MLP(nn.Module):

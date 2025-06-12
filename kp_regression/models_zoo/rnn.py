@@ -1,30 +1,24 @@
-import typing as T
+import logging
 import os
+import typing as T
 
 import torch
-
-from numpy.typing import NDArray
 import torch.nn as nn
+from numpy import concatenate, ndarray
+from numpy.typing import NDArray
+from pytorch_lightning import Trainer
 from torch import save
 
-from numpy import concatenate, ndarray
-
-from pytorch_lightning import Trainer
-
 from kp_regression.base_model import BaseModel
-from kp_regression.utils import safe_mkdir
 from kp_regression.data_pipe import Dataset
 from kp_regression.models_zoo.torch_common import (
     TorchModelParams,
     TrainingModule3Inputs,
     TrainingModule4Inputs,
-    get_dataloader_from_dataset_tuple,
     build_callbacks,
+    get_dataloader_from_dataset_tuple,
 )
-
-import logging
-
-import typing as T
+from kp_regression.utils import safe_mkdir
 
 
 def fc_layer(n_inputs: int, n_outputs: int, use_relu: bool = False) -> nn.Sequential:

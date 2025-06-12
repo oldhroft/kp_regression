@@ -1,20 +1,19 @@
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.base import BaseEstimator
-from sklearn.linear_model import Ridge, Lasso
-from lightgbm import LGBMRegressor
-from catboost import CatBoostRegressor
-
 import os
 
-from kp_regression.utils import safe_mkdir
+from catboost import CatBoostRegressor
+from lightgbm import LGBMRegressor
+from sklearn.base import BaseEstimator
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Lasso, Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from kp_regression.models_zoo.column_estimator import ColumnEstimator
 from kp_regression.models_zoo.sklearn_models import (
-    SklearnMultiOutputModel,
     BoostingValModel,
+    SklearnMultiOutputModel,
 )
+from kp_regression.utils import safe_mkdir
 
 
 class LGBMRegressorClass(SklearnMultiOutputModel):

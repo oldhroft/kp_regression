@@ -1,6 +1,6 @@
 import typing as T
-
 from dataclasses import dataclass
+
 from kp_regression.utils import load_yaml
 
 

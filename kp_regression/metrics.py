@@ -1,14 +1,14 @@
 import typing as T
 
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    accuracy_score,
-    r2_score,
-)
+from numpy import isnan
 from numpy.typing import NDArray
 from pandas import DataFrame
-from numpy import isnan
+from sklearn.metrics import (
+    accuracy_score,
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
+)
 
 from kp_regression.data.postprocess import attach_kp_index_to_grid
 

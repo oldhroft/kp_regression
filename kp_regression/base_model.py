@@ -1,7 +1,7 @@
 import typing as T
-from numpy.typing import NDArray
-
 from abc import ABC, abstractmethod
+
+from numpy.typing import NDArray
 
 from kp_regression.data_pipe import Dataset
 

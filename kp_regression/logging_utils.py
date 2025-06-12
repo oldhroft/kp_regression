@@ -20,7 +20,9 @@ class StreamToLogger(object):  # pragma: no cover
         pass
 
 
-def config_logger(logger: logging.Logger, level=logging.INFO, stdout: bool = True) -> None:
+def config_logger(
+    logger: logging.Logger, level=logging.INFO, stdout: bool = True
+) -> None:
     if stdout:
         handler = logging.StreamHandler(sys.stdout)
     else:
@@ -32,4 +34,3 @@ def config_logger(logger: logging.Logger, level=logging.INFO, stdout: bool = Tru
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(level)
-

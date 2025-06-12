@@ -1,20 +1,18 @@
 import typing as T
-
 from dataclasses import dataclass
-from numpy.typing import NDArray
-from numpy import ndarray
 
 import torch.nn as nn
-from torch import from_numpy, Tensor
 import torch.optim as opt
+from numpy import ndarray
+from numpy.typing import NDArray
+from pytorch_lightning import LightningModule, Trainer
+from pytorch_lightning.callbacks import Callback, ModelCheckpoint
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from torch import Tensor, from_numpy
 from torch.utils.data import DataLoader, TensorDataset
 
-from pytorch_lightning.callbacks import ModelCheckpoint, Callback
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from pytorch_lightning import LightningModule, Trainer
-
-from kp_regression.utils import safe_mkdir
 from kp_regression.data_pipe import Dataset
+from kp_regression.utils import safe_mkdir
 
 
 @dataclass
@@ -227,6 +225,7 @@ class TrainingModule4Inputs(TrainingModule3Inputs):
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
         x1, x2, x3, x4 = batch
         return self.model(x1, x2, x3, x4)
+
 
 def get_dataloader_from_dataset(
     X: NDArray,

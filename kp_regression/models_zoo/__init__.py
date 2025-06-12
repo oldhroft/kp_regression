@@ -1,11 +1,10 @@
 import typing as T
 
-from kp_regression.models_zoo.skmodels import *
 from kp_regression.base_model import BaseModel
-
-from kp_regression.models_zoo.perceptron import MLPClass, MLPClassMulti
 from kp_regression.models_zoo.conv import Conv1DNet3InputsMulti
+from kp_regression.models_zoo.perceptron import MLPClass, MLPClassMulti
 from kp_regression.models_zoo.rnn import LSTM3Inputs, LSTM4Inputs
+from kp_regression.models_zoo.skmodels import *
 
 MODEL_FACTORY: T.Dict[str, T.Type[BaseModel]] = {
     "lgbm_regressor": LGBMRegressorClass,

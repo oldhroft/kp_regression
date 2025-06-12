@@ -1,18 +1,15 @@
-import typing as T
-from numpy.typing import NDArray
-
 import datetime
+import logging
 import os
-from pandas import DataFrame, read_csv  # type: ignore
-
-from numpy import savez_compressed
+import typing as T
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from abc import ABC, abstractmethod
+from numpy import savez_compressed
+from numpy.typing import NDArray
+from pandas import DataFrame, read_csv  # type: ignore
 
 from kp_regression.utils import dump_json, safe_mkdir
-
-import logging
 
 
 @dataclass
@@ -128,12 +125,7 @@ class KpData(BaseData):
             raise ValueError("Only single input path supported")
 
     @abstractmethod
-    def process_data(
-        self,
-        df: DataFrame,
-        is_train: bool,
-        **kwargs
-    ) -> Dataset: ...
+    def process_data(self, df: DataFrame, is_train: bool, **kwargs) -> Dataset: ...
 
     def get_train_test(
         self, year_test: int, year_val: int

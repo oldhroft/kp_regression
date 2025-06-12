@@ -1,32 +1,27 @@
-import typing as T
-
-from sklearn.model_selection import (
-    GridSearchCV,
-    RandomizedSearchCV,
-    KFold,
-    TimeSeriesSplit,
-    train_test_split,
-)
-from sklearn.utils.validation import check_is_fitted
-from sklearn.exceptions import NotFittedError
-
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.base import BaseEstimator
-
-from numpy.typing import NDArray
-from numpy import ndarray
-from numpy import concatenate
-
-from joblib import dump, load
+import logging
 import os
+import typing as T
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from kp_regression.utils import dump_json, safe_mkdir, serialize_params
+from joblib import dump, load
+from numpy import concatenate, ndarray
+from numpy.typing import NDArray
+from sklearn.base import BaseEstimator
+from sklearn.exceptions import NotFittedError
+from sklearn.model_selection import (
+    GridSearchCV,
+    KFold,
+    RandomizedSearchCV,
+    TimeSeriesSplit,
+    train_test_split,
+)
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.utils.validation import check_is_fitted
+
 from kp_regression.base_model import BaseModel
 from kp_regression.data_pipe import Dataset
-
-import logging
+from kp_regression.utils import dump_json, safe_mkdir, serialize_params
 
 
 class SklearnMultiOutputModel(BaseModel):
