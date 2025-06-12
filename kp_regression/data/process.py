@@ -16,7 +16,6 @@ def process_data_standard(
     n_targets: int,
     diff_features: T.List[str],
     diff_kp: bool,
-    lag_diffs: bool,
     hour_type: T.Optional[str] = None,
 ) -> Dataset:
 
@@ -49,13 +48,9 @@ def process_data_standard(
             base_df, subset=diff_features, lags=1, trim=True, suffix_name="diff"
         )
 
-    lag_subset = features_h.copy()
-    if lag_diffs and diff_features_list:
-        lag_subset += diff_features_list
-
     data_lagged, features_h_list = add_lags(
         base_df,
-        subset=lag_subset,
+        subset=features_h + diff_features_list,
         forward=False,
         lags=lags_h,
         trim=True,
@@ -70,15 +65,8 @@ def process_data_standard(
         )
         kp_list = kp_list + kp_diff_features
 
-    kp_lag_subset = ["Kp"]
-
-    if lag_diffs:
-        kp_lag_subset += kp_diff_features
-    else:
-        kp_lag_subset = kp_list
-
     data_lagged_3h_t1, features_3h_list = add_lags(
-        data_lagged_3h_t1, subset=kp_lag_subset, lags=lags_kp, trim=True
+        data_lagged_3h_t1, subset=kp_list, lags=lags_kp, trim=True
     )
 
     data_lagged_3h_t0 = data.loc[data.t0_flg, ["dttm", "Kp"]]
@@ -89,7 +77,7 @@ def process_data_standard(
         )
 
     data_lagged_3h_t0, features_3h_list = add_lags(
-        data_lagged_3h_t0, subset=kp_lag_subset, lags=lags_kp, trim=True
+        data_lagged_3h_t0, subset=kp_list, lags=lags_kp, trim=True
     )
 
     data_lagged_3h_t2 = data.loc[data.t2_flg, ["dttm", "Kp"]]
@@ -100,7 +88,7 @@ def process_data_standard(
 
     data_lagged_3h_t2, _ = add_lags(
         data_lagged_3h_t2.assign(Kp=lambda x: x.Kp.shift()).iloc[1:],
-        subset=kp_lag_subset,
+        subset=kp_list,
         lags=lags_kp,
         trim=True,
     )
@@ -172,7 +160,6 @@ def process_data_standard(
         + flgs
     )
 
-
     return Dataset(
         X=result[result_features].ffill().astype("float64").values,
         y=result[target_3h].ffill().astype("float64").values,
@@ -196,7 +183,6 @@ class KpMixedLags(KpData):
         n_targets: int,
         hour_type: T.Optional[str] = None,
         diff_kp: bool = False,
-        lag_diffs: bool = False,
         diff_features: T.List[str] = [],
     ) -> Dataset:
         return process_data_standard(
@@ -208,7 +194,6 @@ class KpMixedLags(KpData):
             n_targets=n_targets,
             hour_type=hour_type,
             diff_kp=diff_kp,
-            lag_diffs=lag_diffs,
             diff_features=diff_features,
         )
 
@@ -431,6 +416,9 @@ class Kp5mAggMixedLags(KpData5m):
         agg_quantiles: T.List[float],
         features_other: list,
         n_targets: int,
+        diff_kp: bool = False,
+        diff_features: T.List[str] = [],
+        diff_features_5m: T.List[str] = [],
     ) -> Dataset:
 
         from pandas import Grouper
@@ -438,9 +426,9 @@ class Kp5mAggMixedLags(KpData5m):
 
         save_cols = ["dttm", "hour from", "hour to", "Kp*10"]
 
-        df_5m = df_5m.sort_values(by="dttm").reset_index(drop=True)
-        df_1h = df_1h.sort_values(by="dttm").reset_index(drop=True)
-        df = df.sort_values(by="dttm").reset_index(drop=True)
+        df_5m = df_5m.copy()
+        df_1h = df_1h.copy()
+        df = df.copy()
 
         df_5m[features_5m_agg] = df_5m[features_5m_agg].where(
             df_5m[features_5m_agg] > -999.9, NaN
@@ -449,6 +437,14 @@ class Kp5mAggMixedLags(KpData5m):
         df_1h[features_1h_ace] = df_1h[features_1h_ace].where(
             df_5m[features_1h_ace] > -999.9, NaN
         )
+
+        # Add diffs to df_5m if requested
+        diff_features_5m_list: T.List[str] = []
+        if len(diff_features_5m) > 0:
+            df_5m, diff_features_5m_list = add_diffs(
+                df_5m, subset=diff_features_5m, lags=1, trim=True, suffix_name="diff5m"
+            )
+            features_5m_agg = features_5m_agg + diff_features_5m_list
 
         df_5m_agg = concat(
             [
@@ -489,6 +485,8 @@ class Kp5mAggMixedLags(KpData5m):
             features_other=features_other,
             n_targets=n_targets,
             hour_type=None,
+            diff_kp=diff_kp,
+            diff_features=diff_features,
         )
 
 
@@ -639,10 +637,6 @@ def process_data_sequence_5min(
         .merge(data_lagged_3h[["dttm"]], how="inner", on="dttm")
         .merge(data_target_3h[["dttm"]], how="inner", on="dttm")
     )
-
-    # result = data_lagged.merge(data_lagged_3h, how="inner", on="dttm").merge(
-    #     data_target_3h, how="inner", on="dttm"
-    # )
 
     data_lagged_np = (
         intersecting_dttms.merge(data_lagged, how="left", on="dttm")[
