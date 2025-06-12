@@ -6,8 +6,8 @@ from uuid import uuid4
 
 import yaml
 from numpy import ndarray
-from sklearn.base import BaseEstimator
-from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator  # type: ignore
+from sklearn.pipeline import Pipeline  # type: ignore
 
 
 class NumpyEncoder(json.JSONEncoder):

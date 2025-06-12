@@ -57,6 +57,11 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         data_train, data_test = data.get_train_test(**config.data_config.split_params)
         data_val = None
 
+    assert data_train.y is not None, "Training dataset should have y"
+    assert data_test.y is not None, "Testing dataset should have y"
+    if data_val is not None:
+        assert data_test.y is not None, "Testing dataset should have y"
+
     logger.info("Verifying building from config...")
 
     built_models: T.Dict[str, BaseModel] = {}

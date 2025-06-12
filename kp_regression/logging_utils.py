@@ -14,7 +14,7 @@ class StreamToLogger(object):  # pragma: no cover
 
     def write(self, buf: str):
         for line in buf.rstrip().splitlines():
-            self.logger.log(self.level, line.rstrip())
+            self.logger.log(getattr(logging, self.level), line.rstrip())
 
     def flush(self):
         pass

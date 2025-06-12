@@ -15,7 +15,6 @@ from kp_regression.logging_utils import config_logger
 logger = logging.getLogger()
 
 
-
 INIT_SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
     "ace_mag": {
         "year": pl.Int32,
@@ -102,7 +101,7 @@ def process_data(
         )
         .select(pl.col("data_list").list.to_struct(fields=list(init_schema.keys())))
         .unnest("data_list")
-        .cast(init_schema) # type: ignore
+        .cast(init_schema)  # type: ignore
         .with_columns(
             pl.col("time").str.slice(0, 2).cast(pl.Int32).alias("hour"),
             pl.col("time").str.slice(2, 4).cast(pl.Int32).alias("minute"),
@@ -117,7 +116,7 @@ def process_data(
             ).alias("dttm")
         )
         .select(list(schema.keys()))
-        .cast(schema) # type: ignore
+        .cast(schema)  # type: ignore
         .filter(pl.col("dttm").is_between(from_dttm, to_dttm))
     )
 
@@ -191,7 +190,8 @@ def download_ace_data(
 
     config_logger(logger, stdout=False)
 
-    assert data_type in TYPES, "Data type should be instance of types"
+    if data_type not in TYPES:
+        raise ValueError(f"Data type should be one of {TYPES}, got {data_type}")
 
     data_type = T.cast(DataOptions, data_type)
 

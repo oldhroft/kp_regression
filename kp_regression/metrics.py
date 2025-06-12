@@ -2,8 +2,8 @@ import typing as T
 
 from numpy import isnan
 from numpy.typing import NDArray
-from pandas import DataFrame
-from sklearn.metrics import (
+from pandas import DataFrame  # type: ignore
+from sklearn.metrics import (  # type: ignore
     accuracy_score,
     mean_absolute_error,
     mean_squared_error,
@@ -21,7 +21,7 @@ def calculate_regression_metrics(
 
     for i in range(y_true.shape[1]):
 
-        metrics = {"horizon": i}
+        metrics: T.Dict[str, T.Any] = {"horizon": i}
 
         pred_i = preds[:, i]
         y_true_i = y_true[:, i]
