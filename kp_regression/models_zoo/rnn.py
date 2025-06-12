@@ -4,7 +4,7 @@ import typing as T
 
 import torch
 import torch.nn as nn
-from numpy import concatenate, ndarray
+from numpy import concatenate
 from numpy.typing import NDArray
 from pytorch_lightning import Trainer
 from torch import save
@@ -12,16 +12,12 @@ from torch import save
 from kp_regression.base_model import BaseModel
 from kp_regression.data_pipe import Dataset
 from kp_regression.models_zoo.torch_common import (
-    TorchModelParams,
-    TrainingModule3Inputs,
-    TrainingModule4Inputs,
-    build_callbacks,
-    get_dataloader_from_dataset_tuple,
-)
+    TorchModelParams, TrainingModuleNInputs, build_callbacks,
+    get_dataloader_from_dataset_tuple)
 from kp_regression.utils import safe_mkdir
 
 
-def fc_layer(n_inputs: int, n_outputs: int, use_relu: bool = False) -> nn.Sequential:
+def fc_layer(n_inputs: int, n_outputs: int, use_relu: bool = False) -> nn.Module:
     if use_relu:
         return nn.Sequential(nn.Linear(n_inputs, n_outputs), nn.ReLU())
     else:
@@ -29,7 +25,7 @@ def fc_layer(n_inputs: int, n_outputs: int, use_relu: bool = False) -> nn.Sequen
 
 
 def get_fc_net(
-    input_shape: T.Tuple[int], layers: T.List[int], last: bool = False
+    input_shape: T.Tuple[int, ...], layers: T.List[int], last: bool = False
 ) -> nn.Sequential:
     assert len(input_shape) == 1, "FCNet only accepts 1D data"
     n_inputs = input_shape[0]
@@ -49,9 +45,9 @@ def get_fc_net(
 class LSTM(nn.Module):
     def __init__(
         self,
-        input_shape1: T.Tuple[int],
-        input_shape2: T.Tuple[int],
-        input_shape3: T.Tuple[int],
+        input_shape1: T.Tuple[int, ...],
+        input_shape2: T.Tuple[int, ...],
+        input_shape3: T.Tuple[int, ...],
         hidden_size1: int,
         hidden_size2: int,
         num_layers1: int,
@@ -99,10 +95,10 @@ class LSTM(nn.Module):
 class LSTM5m(nn.Module):
     def __init__(
         self,
-        input_shape1: T.Tuple[int],
-        input_shape2: T.Tuple[int],
-        input_shape3: T.Tuple[int],
-        input_shape4: T.Tuple[int],
+        input_shape1: T.Tuple[int, ...],
+        input_shape2: T.Tuple[int, ...],
+        input_shape3: T.Tuple[int, ...],
+        input_shape4: T.Tuple[int, ...],
         hidden_size1: int,
         hidden_size2: int,
         hidden_size3: int,
@@ -162,37 +158,29 @@ class LSTM5m(nn.Module):
 
 
 class LSTM3Inputs(BaseModel):
-    training_module_cls = TrainingModule3Inputs
 
     def build(self) -> None:
-        self.model_params = TorchModelParams(**self.model_params)
 
-        self.models = [
+        n_inputs = 3
+        self.torch_model_params = TorchModelParams(**self.model_params)
+        assert len(self.shape) == n_inputs, "Shape should contain 3 inputs"
+        assert isinstance(self.shape[0], tuple), f"Shape 0 should be tuple"
+        assert isinstance(self.shape[1], tuple), f"Shape 1 should be tuple"
+        assert isinstance(self.shape[2], tuple), f"Shape 2 should be tuple"
+
+        self.models: T.List[nn.Module] = [
             LSTM(
                 input_shape1=self.shape[0],
                 input_shape2=self.shape[1],
                 input_shape3=self.shape[2],
-                **self.model_params.model_params,
+                **self.torch_model_params.model_params,
             )
             for i in range(self.output_shape[0])
         ]
 
+        self.n_inputs = n_inputs
+
         logging.info("Shape %s", self.shape)
-
-        # summary(self.models[0], list(self.shape), device=self.model_params.accelerator)
-
-    def _check(self, ds: T.Optional[Dataset], test=False) -> None:
-
-        assert ds is None or (
-            isinstance(ds.X, tuple)
-            and len(ds.X) == 3
-            and isinstance(ds.X[0], ndarray)
-            and isinstance(ds.X[1], ndarray)
-            and isinstance(ds.X[2], ndarray)
-        ), "Wrong dataset for rnn net"
-
-        if test:
-            assert ds.y is not None, "y should not be None"
 
     def train(
         self,
@@ -200,13 +188,16 @@ class LSTM3Inputs(BaseModel):
         ds_val: T.Optional[Dataset] = None,
     ) -> None:
 
-        self._check(ds)
-        self._check(ds_val)
+        assert ds.y is not None, "Dataset should contain y"
+        assert isinstance(ds.X, tuple), "Dataset for the model should be tuple"
 
         X, y = ds.X, ds.y
 
-        X_val = None if ds_val is None else ds_val.X
-        y_val = None if ds_val is None else ds_val.y
+        if ds_val is None:
+            X_val, y_val = None, None
+        else:
+            assert ds_val.y is not None, "Val dataset should contain y"
+            X_val, y_val = ds_val.X, ds_val.y
 
         for dim_i in range(self.output_shape[0]):
             logging.info("Fitting MLP for dim %s", dim_i)
@@ -214,14 +205,14 @@ class LSTM3Inputs(BaseModel):
             dl_train = get_dataloader_from_dataset_tuple(
                 (*X, y[:, dim_i].reshape(-1, 1)),
                 shuffle=True,
-                **self.model_params.data_params,
+                **self.torch_model_params.data_params,
             )
 
-            if X_val is not None:
+            if X_val is not None and y_val is not None:
                 dl_val = get_dataloader_from_dataset_tuple(
                     (*X_val, y_val[:, dim_i].reshape(-1, 1)),
                     shuffle=False,
-                    **self.model_params.data_params,
+                    **self.torch_model_params.data_params,
                 )
             else:
                 dl_val = None
@@ -236,10 +227,12 @@ class LSTM3Inputs(BaseModel):
                 checkpoints_folder, f"checkpoints{dim_i}"
             )
 
-            callbacks = build_callbacks(checkpoints_folder_i, self.model_params)
+            callbacks = build_callbacks(checkpoints_folder_i, self.torch_model_params)
 
-            training_module = self.training_module_cls(
-                self.models[dim_i], **self.model_params.train_params
+            training_module = TrainingModuleNInputs(
+                self.models[dim_i],
+                n_inputs=self.n_inputs,
+                **self.torch_model_params.train_params,
             )
 
             hist_dir = os.path.join(self.model_dir, "hist")
@@ -249,11 +242,11 @@ class LSTM3Inputs(BaseModel):
             safe_mkdir(hist_dir_i)
 
             trainer = Trainer(
-                max_epochs=self.model_params.epochs,
-                accelerator=self.model_params.accelerator,
+                max_epochs=self.torch_model_params.epochs,
+                accelerator=self.torch_model_params.accelerator,
                 devices=1,
                 default_root_dir=hist_dir_i,
-                callbacks=callbacks,
+                callbacks=list(callbacks),
                 enable_progress_bar=True,
             )
 
@@ -264,31 +257,41 @@ class LSTM3Inputs(BaseModel):
 
             best_model: str = callbacks[0].best_model_path
 
-            training_module = self.training_module_cls.load_from_checkpoint(
-                best_model, model=self.models[dim_i], **self.model_params.train_params
+            training_module_restored = TrainingModuleNInputs.load_from_checkpoint(
+                best_model,
+                n_inputs=self.n_inputs,
+                model=self.models[dim_i],
+                **self.torch_model_params.train_params,
             )
+            assert hasattr(
+                training_module_restored, "model"
+            ), "Training module should have model attr"
 
-            self.models[dim_i] = training_module.model
+            self.models[dim_i] = training_module_restored.model  # type: ignore
 
     def predict(self, ds: Dataset) -> NDArray:
 
-        self._check(ds)
+        assert isinstance(ds.X, tuple), "Dataset for the model should be tuple"
 
         total_preds = []
 
         for dim_i in range(self.output_shape[0]):
             logging.info("Predicting for dim %s", dim_i)
 
-            module = self.training_module_cls(
-                self.models[dim_i], **self.model_params.train_params
+            module = TrainingModuleNInputs(
+                self.models[dim_i],
+                n_inputs=self.n_inputs,
+                **self.torch_model_params.train_params,
             )
 
-            trainer = Trainer(accelerator=self.model_params.accelerator)
+            trainer = Trainer(accelerator=self.torch_model_params.accelerator)
 
             dl_test = get_dataloader_from_dataset_tuple(
-                ds.X, shuffle=False, **self.model_params.data_params
+                ds.X, shuffle=False, **self.torch_model_params.data_params
             )
             preds_list = trainer.predict(module, dl_test)
+
+            assert preds_list is not None, "Returned empty output"
 
             preds_concat = concatenate(preds_list, axis=0)
 
@@ -296,8 +299,8 @@ class LSTM3Inputs(BaseModel):
 
         return concatenate(total_preds, axis=1)
 
-    def cv(self, cv_params: T.Dict, X: NDArray, y: NDArray):
-        raise NotImplementedError("CV not implemented")
+    def cv(self, cv_params: T.Dict[str, T.Any], ds: Dataset):
+        raise NotImplementedError("Not implemented")
 
     def save(self, file_path: str) -> None:
 
@@ -313,10 +316,19 @@ class LSTM3Inputs(BaseModel):
 
 
 class LSTM4Inputs(LSTM3Inputs):
-    training_module_cls = TrainingModule4Inputs
 
     def build(self) -> None:
-        self.model_params = TorchModelParams(**self.model_params)
+
+        n_inputs = 4
+
+        self.torch_model_params = TorchModelParams(**self.model_params)
+        assert len(self.shape) == self.n_inputs, "Shape should contain 4 inputs"
+
+        assert len(self.shape) == 4, "Shape should contain 3 inputs"
+        assert isinstance(self.shape[0], tuple), f"Shape 0 should be tuple"
+        assert isinstance(self.shape[1], tuple), f"Shape 1 should be tuple"
+        assert isinstance(self.shape[2], tuple), f"Shape 2 should be tuple"
+        assert isinstance(self.shape[3], tuple), f"Shape 3 should be tuple"
 
         self.models = [
             LSTM5m(
@@ -324,23 +336,9 @@ class LSTM4Inputs(LSTM3Inputs):
                 input_shape2=self.shape[1],
                 input_shape3=self.shape[2],
                 input_shape4=self.shape[3],
-                **self.model_params.model_params,
+                **self.torch_model_params.model_params,
             )
             for i in range(self.output_shape[0])
         ]
 
-        logging.info("Shape %s", self.shape)
-
-    def _check(self, ds: T.Optional[Dataset], test=False) -> None:
-
-        assert ds is None or (
-            isinstance(ds.X, tuple)
-            and len(ds.X) == 4
-            and isinstance(ds.X[0], ndarray)
-            and isinstance(ds.X[1], ndarray)
-            and isinstance(ds.X[2], ndarray)
-            and isinstance(ds.X[3], ndarray)
-        ), "Wrong dataset for rnn net"
-
-        if test:
-            assert ds.y is not None, "y should not be None"
+        self.n_inputs = n_inputs

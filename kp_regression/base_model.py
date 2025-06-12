@@ -6,13 +6,16 @@ from numpy.typing import NDArray
 from kp_regression.data_pipe import Dataset
 
 
+IntTuple = T.Tuple[int, ...]
+
+
 class BaseModel(ABC):
 
     def __init__(
         self,
-        shape: T.Tuple[int, ...],
+        shape: T.Union[IntTuple, T.Tuple[IntTuple, ...]],
         features: T.Optional[T.List[str]],
-        output_shape: T.Tuple[int, ...],
+        output_shape: IntTuple,
         model_params: T.Dict[str, T.Any],
         model_dir: str,
     ) -> None:

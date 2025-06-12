@@ -59,6 +59,8 @@ class MLPClassMulti(BaseModel):
     def build(self) -> None:
 
         assert len(self.shape) == 1, "MLP accepts only 1d input"
+        assert isinstance(self.shape[0], int), "MLP accepts only 1d input"
+        self.shape = T.cast(T.Tuple[int], self.shape)
 
         self.torch_model_params = TorchModelParams(**self.model_params)
 
@@ -195,7 +197,10 @@ class MLPClass(BaseModel):
     def build(self) -> None:
 
         assert len(self.shape) == 1, "MLP accepts only 1d input"
-
+        assert len(self.shape) == 1, "MLP accepts only 1d input"
+        assert isinstance(self.shape[0], int), "MLP accepts only 1d input"
+        self.shape = T.cast(T.Tuple[int], self.shape)
+        
         self.torch_model_params = TorchModelParams(**self.model_params)
 
         assert (

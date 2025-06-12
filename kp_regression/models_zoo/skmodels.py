@@ -1,12 +1,12 @@
 import os
 
-from catboost import CatBoostRegressor #type: ignore
+from catboost import CatBoostRegressor  # type: ignore
 from lightgbm import LGBMRegressor
-from sklearn.base import BaseEstimator #type: ignore
-from sklearn.ensemble import RandomForestRegressor #type: ignore
-from sklearn.linear_model import Lasso, Ridge #type: ignore
-from sklearn.pipeline import Pipeline #type: ignore
-from sklearn.preprocessing import StandardScaler #type: ignore
+from sklearn.base import BaseEstimator  # type: ignore
+from sklearn.ensemble import RandomForestRegressor  # type: ignore
+from sklearn.linear_model import Lasso, Ridge  # type: ignore
+from sklearn.pipeline import Pipeline  # type: ignore
+from sklearn.preprocessing import StandardScaler  # type: ignore
 
 from kp_regression.models_zoo.column_estimator import ColumnEstimator
 from kp_regression.models_zoo.sklearn_models import (
