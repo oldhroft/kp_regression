@@ -1,5 +1,5 @@
 import typing as T
-from pandas import DataFrame, Index
+from pandas import DataFrame, Index #type: ignore
 
 
 def _trim(df: DataFrame, forward: bool, trim: bool, lags: int) -> DataFrame:
@@ -17,7 +17,7 @@ def add_lags(
     forward: bool = False,
     lags: int = 1,
     trim: bool = False,
-    suffix_name: str = None,
+    suffix_name: T.Optional[str] = None,
     sort_lags: bool = False,
 ) -> T.Tuple[DataFrame, T.List[str]]:
     if suffix_name is None:
@@ -27,8 +27,11 @@ def add_lags(
 
     digits = len(str(lags))
 
-    columns = []
-    sort_order = {}
+    columns: T.List[str] = []
+    sort_order: T.Dict[str, T.Tuple[int, str]] = {}
+    
+    if subset is None:
+        subset = list(df.columns)
 
     if not isinstance(lags, int):
         raise ValueError(f"Lags should be int, {type(lags)} type prodided")
@@ -36,20 +39,6 @@ def add_lags(
         raise ValueError(f"Lags should be non-negative")
     elif lags == 0:
         return x, []
-    elif subset is None:
-        for i in range(1, lags + 1):
-            lag = -i if forward else i
-            index = str(i).zfill(digits)
-            column_suffix = f"_{suffix_name}_{index}"
-            tmp = x.shift(lag).add_suffix(column_suffix)
-
-            columns.extend(tmp.columns)
-            zipped = list(zip([i for _ in range(len(x.columns))], x.columns))
-
-            sort_order = dict(sort_order, **dict(zip(list(tmp.columns), zipped)))
-
-            x = x.join(x.shift(lag).add_suffix(column_suffix))
-
     elif isinstance(subset, list):
         for i in range(1, lags + 1):
             lag = -i if forward else i
@@ -58,9 +47,9 @@ def add_lags(
             tmp = x.loc[:, subset].shift(lag).add_suffix(column_suffix)
             columns.extend(tmp.columns)
 
-            zipped = list(zip([i for _ in range(len(subset))], subset))
-
-            sort_order = dict(sort_order, **dict(zip(list(tmp.columns), zipped)))
+            zipped = list(map(lambda x: (i, x), subset))
+            new_pairs = dict(zip(list(tmp.columns), zipped))
+            sort_order = dict(sort_order, **new_pairs)
 
             x = x.join(tmp)
 

@@ -1,10 +1,11 @@
 import os
 import polars as pl
+import polars.type_aliases as pdt
 import datetime
 from urllib.error import HTTPError
 
-from joblib import Parallel, delayed
-from tqdm import tqdm
+from joblib import Parallel, delayed  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 import click
 
@@ -17,62 +18,55 @@ import logging
 logger = logging.getLogger()
 
 
-INIT_SCHEMA = {
-    "ace_mag": pl.Schema(
-        {
-            "year": pl.Int32(),
-            "month": pl.Int32(),
-            "day": pl.Int32(),
-            "time": pl.String(),
-            "julian_day": pl.Int32(),
-            "seconds_of_day": pl.Int64(),
-            "status": pl.Int16(),
-            "Bx": pl.Float64(),
-            "By": pl.Float64(),
-            "Bz": pl.Float64(),
-            "Bt": pl.Float64(),
-            "lat": pl.Float64(),
-            "lon": pl.Float64(),
-        }
-    ),
-    "ace_swepam": pl.Schema(
-        {
-            "year": pl.Int32(),
-            "month": pl.Int32(),
-            "day": pl.Int32(),
-            "time": pl.String(),
-            "julian_day": pl.Int32(),
-            "seconds_of_day": pl.Int64(),
-            "status": pl.Int16(),
-            "H_den_SWP": pl.Float64(),
-            "SW_spd": pl.Float64(),
-            "Trr_SWP": pl.Float64(),
-        }
-    ),
+
+INIT_SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
+    "ace_mag": {
+        "year": pl.Int32,
+        "month": pl.Int32,
+        "day": pl.Int32,
+        "time": pl.String,
+        "julian_day": pl.Int32,
+        "seconds_of_day": pl.Int64,
+        "status": pl.Int16,
+        "Bx": pl.Float64,
+        "By": pl.Float64,
+        "Bz": pl.Float64,
+        "Bt": pl.Float64,
+        "lat": pl.Float64,
+        "lon": pl.Float64,
+    },
+    "ace_swepam": {
+        "year": pl.Int32,
+        "month": pl.Int32,
+        "day": pl.Int32,
+        "time": pl.String,
+        "julian_day": pl.Int32,
+        "seconds_of_day": pl.Int64,
+        "status": pl.Int16,
+        "H_den_SWP": pl.Float64,
+        "SW_spd": pl.Float64,
+        "Trr_SWP": pl.Float64,
+    },
 }
 
-SCHEMA = {
-    "ace_mag": pl.Schema(
-        {
-            "dttm": pl.Datetime(),
-            "status": pl.Int16(),
-            "Bx": pl.Float64(),
-            "By": pl.Float64(),
-            "Bz": pl.Float64(),
-            "Bt": pl.Float64(),
-            "lat": pl.Float64(),
-            "lon": pl.Float64(),
-        }
-    ),
-    "ace_swepam": pl.Schema(
-        {
-            "dttm": pl.Datetime(),
-            "status": pl.Int16(),
-            "H_den_SWP": pl.Float64(),
-            "SW_spd": pl.Float64(),
-            "Trr_SWP": pl.Float64(),
-        }
-    ),
+SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
+    "ace_mag": {
+        "dttm": pl.Datetime,
+        "status": pl.Int16,
+        "Bx": pl.Float64,
+        "By": pl.Float64,
+        "Bz": pl.Float64,
+        "Bt": pl.Float64,
+        "lat": pl.Float64,
+        "lon": pl.Float64,
+    },
+    "ace_swepam": {
+        "dttm": pl.Datetime,
+        "status": pl.Int16,
+        "H_den_SWP": pl.Float64,
+        "SW_spd": pl.Float64,
+        "Trr_SWP": pl.Float64,
+    },
 }
 
 FILE_FMT = "https://sohoftp.nascom.nasa.gov/sdb/goes/ace/{agg_level}/{dt}_{data_type}_{freq}.txt"
@@ -92,8 +86,8 @@ FreqOptions = T.Literal["1m", "1h"]
 
 def process_data(
     data: pl.LazyFrame,
-    init_schema: pl.Schema,
-    schema: pl.Schema,
+    init_schema: pdt.plt.SchemaDict,
+    schema: pdt.plt.SchemaDict,
     from_date: str,
     to_date: str,
 ) -> pl.LazyFrame:
@@ -109,9 +103,9 @@ def process_data(
             .str.split(" ")
             .alias("data_list")
         )
-        .select(pl.col("data_list").list.to_struct(fields=init_schema.names()))
+        .select(pl.col("data_list").list.to_struct(fields=list(init_schema.keys())))
         .unnest("data_list")
-        .cast(init_schema)
+        .cast(init_schema) # type: ignore
         .with_columns(
             pl.col("time").str.slice(0, 2).cast(pl.Int32).alias("hour"),
             pl.col("time").str.slice(2, 4).cast(pl.Int32).alias("minute"),
@@ -125,8 +119,8 @@ def process_data(
                 pl.col("minute"),
             ).alias("dttm")
         )
-        .select(schema.names())
-        .cast(schema)
+        .select(list(schema.keys()))
+        .cast(schema) # type: ignore
         .filter(pl.col("dttm").is_between(from_dttm, to_dttm))
     )
 
@@ -199,6 +193,10 @@ def download_ace_data(
         )
 
     config_logger(logger, stdout=False)
+
+    assert data_type in TYPES, "Data type should be instance of types"
+
+    data_type = T.cast(DataOptions, data_type)
 
     rng = get_file_range(from_date=from_date, to_date=to_date, data_type=data_type)
 

@@ -1,8 +1,8 @@
 import typing as T
 
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler # type: ignore
 
-from pandas import DataFrame, concat
+from pandas import DataFrame, concat # type: ignore
 from kp_regression.data_pipe import KpData, Dataset, KpData5m
 from kp_regression.data_utils import add_lags, add_diffs
 
@@ -57,7 +57,7 @@ def process_data_standard(
     )
 
     kp_list = ["Kp"]
-    kp_diff_features = []
+    kp_diff_features: T.List[str] = []
     data_lagged_3h_t1 = data.loc[data.t1_flg, ["dttm", "Kp"]]
     if diff_kp:
         data_lagged_3h_t1, kp_diff_features = add_diffs(
@@ -176,14 +176,15 @@ class KpMixedLags(KpData):
         self,
         df: DataFrame,
         is_train: bool,
-        lags_kp: int,
-        lags_h: int,
-        features_h: list,
-        features_other: list,
-        n_targets: int,
+        lags_kp: int = 0,
+        lags_h: int = 0,
+        features_h: list = ["Dst"],
+        features_other: list = [],
+        n_targets: int = 8,
         hour_type: T.Optional[str] = None,
         diff_kp: bool = False,
         diff_features: T.List[str] = [],
+        **kwargs
     ) -> Dataset:
         return process_data_standard(
             data=df.sort_values(by="dttm").reset_index(drop=True),
@@ -370,18 +371,23 @@ class KpMixedLagsSeq(KpData):
         self,
         df: DataFrame,
         is_train: bool,
-        lags_kp: int,
-        lags_h: int,
-        features_h: list,
-        features_other: list,
-        n_targets: int,
-        scale: bool,
+        lags_kp: int = 0,
+        lags_h: int = 0,
+        features_h: T.List[str] = ["Dst"],
+        features_other: T.List[str] = [],
+        n_targets: int = 8,
+        scale: bool = False,
+        **kwargs
     ) -> Dataset:
 
         if is_train:
             scalers = StandardScaler(), StandardScaler(), StandardScaler()
+            self.scalers = scalers
         else:
-            scalers = self.scalers
+            if hasattr(self, "scalers"):
+                scalers = self.scalers
+            else:
+                raise ValueError("Not fitted scalers yet, try first with is_train = True")
 
         res, scalers = process_data_sequence(
             data=df.sort_values(by="dttm").reset_index(drop=True),
@@ -407,18 +413,19 @@ class Kp5mAggMixedLags(KpData5m):
         df_1h: DataFrame,
         df_5m: DataFrame,
         is_train: bool,
-        lags_kp: int,
-        lags_h: int,
-        features_h: list,
-        features_1h_ace: list,
-        features_5m_agg: list,
-        agg_list: T.List[str],
-        agg_quantiles: T.List[float],
-        features_other: list,
-        n_targets: int,
+        lags_kp: int = 0,
+        lags_h: int = 0,
+        features_h: T.List[str] = ["Dst"],
+        features_1h_ace: T.List[str] = [],
+        features_5m_agg: T.List[str] = [],
+        agg_list: T.List[str] =[],
+        agg_quantiles: T.List[float] = [],
+        features_other: T.List[str] = [],
+        n_targets: int = 8,
         diff_kp: bool = False,
         diff_features: T.List[str] = [],
         diff_features_5m: T.List[str] = [],
+        **kwargs
     ) -> Dataset:
 
         from pandas import Grouper
@@ -723,15 +730,16 @@ class Kp5mMixedLagsSeq(KpData5m):
         df_1h: DataFrame,
         df_5m: DataFrame,
         is_train: bool,
-        lags_5m: int,
-        lags_kp: int,
-        lags_h: int,
-        features_h: list,
-        features_5m: list,
-        features_1h_ace: list,
-        features_other: list,
-        n_targets: int,
+        lags_5m: int = 0,
+        lags_kp: int = 0,
+        lags_h: int = 0,
+        features_h: list = ["Dst"],
+        features_5m: list = [],
+        features_1h_ace: list = [],
+        features_other: list = [],
+        n_targets: int = 8,
         scale: bool = True,
+        **kwargs
     ) -> Dataset:
 
         if is_train:
@@ -741,8 +749,13 @@ class Kp5mMixedLagsSeq(KpData5m):
                 StandardScaler(),
                 StandardScaler(),
             )
+            self.scalers = scalers
         else:
-            scalers = self.scalers
+            if hasattr(self, "scalers"):
+                scalers = self.scalers
+            else:
+                raise ValueError("Not fitted scalers yet, try first with is_train = True")
+
 
         df = df.merge(df_1h[features_1h_ace + ["dttm"]], how="left", on="dttm")
 
