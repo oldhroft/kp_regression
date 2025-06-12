@@ -1,28 +1,20 @@
-import polars as pl
-import requests
+import logging
+import os
+import re
+import typing as T
+from urllib.parse import urljoin
 
 import click
-
-from urllib.parse import urljoin
-from bs4 import BeautifulSoup
-
-from joblib import Parallel, delayed
-from tqdm import tqdm
-
-from pyhdf.HDF import HDF, HC
-from pyhdf.VS import VS, VD
-
-import re
-import os
-
+import polars as pl
+import requests
+from bs4 import BeautifulSoup  # type: ignore
+from joblib import Parallel, delayed  # type: ignore
 from numpy.typing import NDArray
-
-import typing as T
-
+from pyhdf.HDF import HC, HDF  # type: ignore
+from pyhdf.VS import VD  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 from kp_regression.logging_utils import config_logger
-
-import logging
 
 logger = logging.getLogger()
 
@@ -53,7 +45,7 @@ def vdata_to_pl(vdata: VD) -> pl.LazyFrame:
     return pl.DataFrame(vdata[:], schema=field_names, orient="row").lazy()
 
 
-def extract_data_from_hdf(path: str, data_type: TypeLiteral) -> pl.DataFrame:
+def extract_data_from_hdf(path: str, data_type: TypeLiteral) -> pl.LazyFrame:
     file = HDF(path, HC.READ)
     v = file.vstart()
 
@@ -88,7 +80,7 @@ def load_file(url: str, dirname: str, use_cache: bool) -> str:
 
 def process_hdf_file_from_url(
     url: str, dirname: str, data_type: TypeLiteral, use_cache: bool
-) -> pl.DataFrame:
+) -> pl.LazyFrame:
 
     fpath = load_file(url=url, dirname=dirname, use_cache=use_cache)
     df = extract_data_from_hdf(fpath, data_type=data_type)
@@ -173,6 +165,8 @@ def download_ace_data(
         raise ValueError(
             f"Unknown data: {data_type}, possible data types: {';'.join(DATA_TYPES)}"
         )
+
+    data_type = T.cast(TypeLiteral, data_type)
 
     config_logger(logger, stdout=False)
 

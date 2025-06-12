@@ -1,19 +1,16 @@
-import os
-import polars as pl
-import polars.type_aliases as pdt
 import datetime
+import logging
+import os
+import typing as T
 from urllib.error import HTTPError
 
+import click
+import polars as pl
+import polars.type_aliases as pdt
 from joblib import Parallel, delayed  # type: ignore
 from tqdm import tqdm  # type: ignore
 
-import click
-
-import typing as T
-
 from kp_regression.logging_utils import config_logger
-
-import logging
 
 logger = logging.getLogger()
 
