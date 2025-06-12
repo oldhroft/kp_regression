@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.optim as opt
 from numpy.typing import NDArray
 from pytorch_lightning import LightningModule
-from pytorch_lightning.callbacks import Callback, ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from torch import Tensor, from_numpy
 from torch.utils.data import DataLoader, TensorDataset

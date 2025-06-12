@@ -14,7 +14,6 @@ from sklearn.model_selection import (  # type: ignore
     KFold,
     RandomizedSearchCV,
     TimeSeriesSplit,
-    train_test_split,
 )
 from sklearn.multioutput import MultiOutputRegressor  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
