@@ -58,40 +58,52 @@ def process_data_standard(
 
     kp_list = ["Kp"]
     kp_diff_features: T.List[str] = []
-    data_lagged_3h_t1 = data.loc[data.t1_flg, ["dttm", "Kp"]]
+
+    # TO
+    data_lagged_3h_t0 = data.loc[data.t0_flg, ["dttm", "Kp"]]
     if diff_kp:
-        data_lagged_3h_t1, kp_diff_features = add_diffs(
-            data_lagged_3h_t1, subset=["Kp"], lags=1, trim=True, suffix_name="diff"
+        data_lagged_3h_t0, kp_diff_features = add_diffs(
+            data_lagged_3h_t0,
+            subset=["Kp"],
+            lags=1,
+            trim=True,
+            suffix_name="diff",
         )
         kp_list = kp_list + kp_diff_features
-
-    data_lagged_3h_t1, features_3h_list = add_lags(
-        data_lagged_3h_t1, subset=kp_list, lags=lags_kp, trim=True
-    )
-
-    data_lagged_3h_t0 = data.loc[data.t0_flg, ["dttm", "Kp"]]
-
-    if diff_kp:
-        data_lagged_3h_t0, _ = add_diffs(
-            data_lagged_3h_t0, subset=["Kp"], lags=1, trim=True, suffix_name="diff"
-        )
 
     data_lagged_3h_t0, features_3h_list = add_lags(
         data_lagged_3h_t0, subset=kp_list, lags=lags_kp, trim=True
     )
 
-    data_lagged_3h_t2 = data.loc[data.t2_flg, ["dttm", "Kp"]]
+    # T1
+    data_lagged_3h_t1 = (
+        data.loc[data.t1_flg, ["dttm", "Kp"]].assign(Kp=lambda x: x.Kp.shift()).iloc[1:]
+    )
+
+    if diff_kp:
+        data_lagged_3h_t1, _ = add_diffs(
+            data_lagged_3h_t1, subset=kp_list, lags=1, trim=True, suffix_name="diff"
+        )
+
+    data_lagged_3h_t1, _ = add_lags(
+        data_lagged_3h_t1, subset=kp_list, lags=lags_kp, trim=True
+    )
+
+    # T2
+
+    data_lagged_3h_t2 = (
+        data.loc[data.t2_flg, ["dttm", "Kp"]].assign(Kp=lambda x: x.Kp.shift()).iloc[1:]
+    )
     if diff_kp:
         data_lagged_3h_t2, _ = add_diffs(
             data_lagged_3h_t2, subset=["Kp"], lags=1, trim=True, suffix_name="diff"
         )
 
     data_lagged_3h_t2, _ = add_lags(
-        data_lagged_3h_t2.assign(Kp=lambda x: x.Kp.shift()).iloc[1:],
-        subset=kp_list,
-        lags=lags_kp,
-        trim=True,
+        data_lagged_3h_t2, subset=kp_list, lags=lags_kp, trim=True
     )
+
+    # Combined
 
     data_lagged_3h = (
         concat(
@@ -184,7 +196,7 @@ class KpMixedLags(KpData):
         hour_type: T.Optional[str] = None,
         diff_kp: bool = False,
         diff_features: T.List[str] = [],
-        **kwargs
+        **kwargs,
     ) -> Dataset:
         return process_data_standard(
             data=df.sort_values(by="dttm").reset_index(drop=True),
@@ -377,7 +389,7 @@ class KpMixedLagsSeq(KpData):
         features_other: T.List[str] = [],
         n_targets: int = 8,
         scale: bool = False,
-        **kwargs
+        **kwargs,
     ) -> Dataset:
 
         if is_train:
@@ -387,7 +399,9 @@ class KpMixedLagsSeq(KpData):
             if hasattr(self, "scalers"):
                 scalers = self.scalers
             else:
-                raise ValueError("Not fitted scalers yet, try first with is_train = True")
+                raise ValueError(
+                    "Not fitted scalers yet, try first with is_train = True"
+                )
 
         res, scalers = process_data_sequence(
             data=df.sort_values(by="dttm").reset_index(drop=True),
@@ -418,14 +432,14 @@ class Kp5mAggMixedLags(KpData5m):
         features_h: T.List[str] = ["Dst"],
         features_1h_ace: T.List[str] = [],
         features_5m_agg: T.List[str] = [],
-        agg_list: T.List[str] =[],
+        agg_list: T.List[str] = [],
         agg_quantiles: T.List[float] = [],
         features_other: T.List[str] = [],
         n_targets: int = 8,
         diff_kp: bool = False,
         diff_features: T.List[str] = [],
         diff_features_5m: T.List[str] = [],
-        **kwargs
+        **kwargs,
     ) -> Dataset:
 
         from numpy import NaN
@@ -739,7 +753,7 @@ class Kp5mMixedLagsSeq(KpData5m):
         features_other: list = [],
         n_targets: int = 8,
         scale: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Dataset:
 
         if is_train:
@@ -754,8 +768,9 @@ class Kp5mMixedLagsSeq(KpData5m):
             if hasattr(self, "scalers"):
                 scalers = self.scalers
             else:
-                raise ValueError("Not fitted scalers yet, try first with is_train = True")
-
+                raise ValueError(
+                    "Not fitted scalers yet, try first with is_train = True"
+                )
 
         df = df.merge(df_1h[features_1h_ace + ["dttm"]], how="left", on="dttm")
 
