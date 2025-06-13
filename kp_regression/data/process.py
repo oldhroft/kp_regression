@@ -63,11 +63,7 @@ def process_data_standard(
     data_lagged_3h_t0 = data.loc[data.t0_flg, ["dttm", "Kp"]]
     if diff_kp:
         data_lagged_3h_t0, kp_diff_features = add_diffs(
-            data_lagged_3h_t0,
-            subset=["Kp"],
-            lags=1,
-            trim=True,
-            suffix_name="diff",
+            data_lagged_3h_t0, subset=["Kp"], lags=1, trim=True, suffix_name="diff"
         )
         kp_list = kp_list + kp_diff_features
 
@@ -82,7 +78,7 @@ def process_data_standard(
 
     if diff_kp:
         data_lagged_3h_t1, _ = add_diffs(
-            data_lagged_3h_t1, subset=kp_list, lags=1, trim=True, suffix_name="diff"
+            data_lagged_3h_t1, subset=["Kp"], lags=1, trim=True, suffix_name="diff"
         )
 
     data_lagged_3h_t1, _ = add_lags(
@@ -114,6 +110,8 @@ def process_data_standard(
         .sort_values(by="dttm")
         .reset_index(drop=True)
     )
+
+    # Targets
 
     data_target_3h_t0, target_3h = add_lags(
         data.loc[data.t0_flg, ["dttm", "Kp"]],

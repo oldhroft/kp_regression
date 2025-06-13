@@ -14,6 +14,7 @@ from sklearn.model_selection import (  # type: ignore
     KFold,
     RandomizedSearchCV,
     TimeSeriesSplit,
+    train_test_split,
 )
 from sklearn.multioutput import MultiOutputRegressor  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
@@ -21,7 +22,6 @@ from sklearn.utils.validation import check_is_fitted  # type: ignore
 from kp_regression.base_model import BaseModel
 from kp_regression.data_pipe import Dataset
 from kp_regression.utils import dump_json, safe_mkdir, serialize_params
-from kp_regression.models_zoo.utils import check_data_and_get_train_val_plain_input
 
 
 class SklearnMultiOutputModel(BaseModel):
@@ -131,21 +131,71 @@ class BoostingValModel(BaseModel):
 
     def train(self, ds: Dataset, ds_val: T.Optional[Dataset] = None):
 
-        X, y, X_val, y_val = check_data_and_get_train_val_plain_input(
-            ds, ds_val, self.boosting_params.val_frac, error_if_both_absent=True
-        )
-        if X_val is None or y_val is None:
+        assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
+        assert hasattr(self, "boosting_params"), "Model should be built prior to train"
+        assert ds.y is not None and isinstance(
+            ds.y, ndarray
+        ), "For outputs should be present and be numpy"
+
+        X, y = ds.X, ds.y
+
+        # if ds_val is None:
+        #     X_val =
+
+        # X_val = None if ds_val is None else ds_val.X
+        y_val = None if ds_val is None else ds_val.y
+
+        if ds_val is None and self.boosting_params.val_frac is not None:
+            logging.info("Received val frac, creating val split")
+
+            split_result = tuple(
+                train_test_split(
+                    X,
+                    y,
+                    test_size=self.boosting_params.val_frac,
+                    random_state=17,
+                    shuffle=True,
+                )
+            )
+
+            assert (
+                len(split_result) == 4
+            ), "Result of train-test split should contain exactly 4 items"
+
+            split_result = T.cast(T.Tuple[NDArray, ...], split_result)
+
+            X, X_val, y, y_val = split_result
+
+        elif ds_val is not None:
+            assert isinstance(
+                ds_val.X, ndarray
+            ), "For sklearn models dataset X should be Numpy"
+            assert isinstance(
+                ds_val.y, ndarray
+            ), "For sklearn models dataset y should be Numpy"
+
+            X_val, y_val = ds_val.X, ds_val.y
+
+            assert isinstance(
+                y_val, ndarray
+            ), "Outputs should be present and be numpy (val set)"
+
+        else:
             raise ValueError(
-                "Validation set is required for BoostingValModel. Please provide ds_val or val_frac."
+                "Either validation set should be provided, or parameter val_frac"
             )
 
         for dim_i in range(self.output_shape[0]):
+
             logging.info("Fitting boosting for level %s", dim_i)
+
             params = {}
+
             if self.early_stopping_in_fit:
                 params["early_stopping_rounds"] = (
                     self.boosting_params.early_stopping_rounds
                 )
+
             self.models[dim_i].fit(
                 X, y[:, dim_i], eval_set=[(X_val, y_val[:, dim_i])], **params
             )
