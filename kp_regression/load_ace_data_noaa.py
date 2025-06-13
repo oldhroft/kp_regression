@@ -194,8 +194,11 @@ def download_ace_data(
         raise ValueError(f"Data type should be one of {TYPES}, got {data_type}")
 
     data_type = T.cast(DataOptions, data_type)
+    freq = T.cast(FreqOptions, freq)
 
-    rng = get_file_range(from_date=from_date, to_date=to_date, data_type=data_type)
+    rng = get_file_range(
+        from_date=from_date, to_date=to_date, data_type=data_type, freq=freq
+    )
 
     if len(rng) == 0:
         logger.info("No files for this period found, exiting")
