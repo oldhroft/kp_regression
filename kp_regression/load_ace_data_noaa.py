@@ -43,6 +43,35 @@ INIT_SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
         "SW_spd": pl.Float64,
         "Trr_SWP": pl.Float64,
     },
+    "ace_epam": {
+        "year": pl.Int32,
+        "month": pl.Int32,
+        "day": pl.Int32,
+        "time": pl.String,
+        "julian_day": pl.Int32,
+        "seconds_of_day": pl.Int64,
+        "status_e": pl.Int16,
+        "e_lo": pl.Float64,
+        "e_hi": pl.Float64,
+        "status_Ion": pl.Float64,
+        "Ion_vlo": pl.Float64,
+        "Ion_lo": pl.Float64,
+        "Ion_mid": pl.Float64,
+        "H": pl.Float64,
+        "Ion_hi": pl.Float64,
+    },
+    "ace_sis": {
+        "year": pl.Int32,
+        "month": pl.Int32,
+        "day": pl.Int32,
+        "time": pl.String,
+        "julian_day": pl.Int32,
+        "seconds_of_day": pl.Int64,
+        "status_lo": pl.Int16,
+        "H_lo": pl.Float64,
+        "status_hi": pl.Int16,
+        "H_hi": pl.Float64,
+    },
 }
 
 SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
@@ -63,6 +92,25 @@ SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
         "SW_spd": pl.Float64,
         "Trr_SWP": pl.Float64,
     },
+    "ace_epam": {
+        "dttm": pl.Datetime,
+        "status_e": pl.Int16,
+        "e_lo": pl.Float64,
+        "e_hi": pl.Float64,
+        "status_Ion": pl.Float64,
+        "Ion_vlo": pl.Float64,
+        "Ion_lo": pl.Float64,
+        "Ion_mid": pl.Float64,
+        "H": pl.Float64,
+        "Ion_hi": pl.Float64,
+    },
+    "ace_sis": {
+        "dttm": pl.Datetime,
+        "status_lo": pl.Int16,
+        "H_lo": pl.Float64,
+        "status_hi": pl.Int16,
+        "H_hi": pl.Float64,
+    },
 }
 
 FILE_FMT = "https://sohoftp.nascom.nasa.gov/sdb/goes/ace/{agg_level}/{dt}_{data_type}_{freq}.txt"
@@ -71,13 +119,14 @@ READ_CFG = dict(
     comment_prefix="#", skip_lines=2, has_header=False, new_columns=["data"]
 )
 
-TYPES = ["ace_swepam", "ace_mag"]
-FREQS = ["1m", "1h"]
+TYPES = ["ace_swepam", "ace_mag", "ace_epam", "ace_sis"]
+FREQS = ["1m", "5m", "1h"]
 
-OUT_FMT = {"1h": "%Y%m", "1m": "%Y%m%d"}
+OUT_FMT = {"1h": "%Y%m", "1m": "%Y%m%d", "5m": "%Y%m%d"}
+AGG_LEVEL = {"1h": "monthly", "1m": "daily", "5m": "daily"}
 
-DataOptions = T.Literal["ace_swepam", "ace_mag"]
-FreqOptions = T.Literal["1m", "1h"]
+DataOptions = T.Literal["ace_swepam", "ace_mag", "ace_epam", "ace_sis"]
+FreqOptions = T.Literal["1m", "5m", "1h"]
 
 
 def process_data(
@@ -138,14 +187,14 @@ def get_file_range(
     freq: FreqOptions = "1h",
 ) -> T.List[str]:
 
-    agg_level = "monthly" if freq == "1h" else "daily"
+    agg_level = AGG_LEVEL[freq]
 
     from_dttm = datetime.datetime.fromisoformat(from_date)
     to_dttm = datetime.datetime.fromisoformat(to_date)
 
     out_fmt = OUT_FMT[freq]
 
-    if freq == "1m":
+    if freq in ("1m", "5m"):
         days = (to_dttm - from_dttm).days
 
         return [
