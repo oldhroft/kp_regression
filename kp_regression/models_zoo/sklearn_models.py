@@ -1,32 +1,27 @@
-import typing as T
-
-from sklearn.model_selection import (
-    GridSearchCV,
-    RandomizedSearchCV,
-    KFold,
-    TimeSeriesSplit,
-    train_test_split,
-)
-from sklearn.utils.validation import check_is_fitted
-from sklearn.exceptions import NotFittedError
-
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.base import BaseEstimator
-
-from numpy.typing import NDArray
-from numpy import ndarray
-from numpy import concatenate
-
-from joblib import dump, load
+import logging
 import os
+import typing as T
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from kp_regression.utils import dump_json, safe_mkdir, serialize_params
+from joblib import dump, load  # type: ignore
+from numpy import concatenate, ndarray
+from numpy.typing import NDArray
+from sklearn.base import BaseEstimator  # type: ignore
+from sklearn.exceptions import NotFittedError  # type: ignore
+from sklearn.model_selection import (  # type: ignore
+    GridSearchCV,
+    KFold,
+    RandomizedSearchCV,
+    TimeSeriesSplit,
+    train_test_split,
+)
+from sklearn.multioutput import MultiOutputRegressor  # type: ignore
+from sklearn.utils.validation import check_is_fitted  # type: ignore
+
 from kp_regression.base_model import BaseModel
 from kp_regression.data_pipe import Dataset
-
-import logging
+from kp_regression.utils import dump_json, safe_mkdir, serialize_params
 
 
 class SklearnMultiOutputModel(BaseModel):
@@ -62,18 +57,24 @@ class SklearnMultiOutputModel(BaseModel):
         ds_val: T.Optional[Dataset] = None,
     ):
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
+        assert ds.y is not None and isinstance(
+            ds.y, ndarray
+        ), "For outputs should be present and be numpy"
+
         self.multi_model.fit(ds.X, ds.y)
 
     def predict(self, ds: Dataset) -> NDArray:
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
         return self.multi_model.predict(ds.X)
 
-    def cv(self, cv_params: T.Dict, ds: Dataset):
+    def cv(self, cv_params: T.Dict[str, T.Any], ds: Dataset):
         """A very hacky type of CV"""
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
 
         X = ds.X
         y = ds.y
+
+        assert y is not None, "Y should be not none"
 
         if cv_params["cv_split_type"] == "fold":
             kf = KFold(**cv_params["cv_split_cfg"])
@@ -122,43 +123,67 @@ class BoostingValModel(BaseModel):
     def get_model(self, i: int) -> BaseEstimator: ...
 
     def build(self) -> None:
-        self.model_params = BoostingEvalConfig(**self.model_params)
+        self.boosting_params = BoostingEvalConfig(**self.model_params)
         self.models = [
-            self.get_model(i).set_params(**self.model_params.model_params)
+            self.get_model(i).set_params(**self.boosting_params.model_params)
             for i in range(self.output_shape[0])
         ]
 
     def train(self, ds: Dataset, ds_val: T.Optional[Dataset] = None):
 
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
-        assert ds_val is None or isinstance(
-            ds_val.X, ndarray
-        ), "For sklearn models dataset should be Numpy"
+        assert hasattr(self, "boosting_params"), "Model should be built prior to train"
+        assert ds.y is not None and isinstance(
+            ds.y, ndarray
+        ), "For outputs should be present and be numpy"
 
         X, y = ds.X, ds.y
 
-        X_val = None if ds_val is None else ds_val.X
+        # if ds_val is None:
+        #     X_val =
+
+        # X_val = None if ds_val is None else ds_val.X
         y_val = None if ds_val is None else ds_val.y
 
-        if X_val is None and self.model_params.val_frac is not None:
+        if ds_val is None and self.boosting_params.val_frac is not None:
             logging.info("Received val frac, creating val split")
 
-            X, X_val, y, y_val = train_test_split(
-                X,
-                y,
-                test_size=self.model_params.val_frac,
-                random_state=17,
-                shuffle=True,
+            split_result = tuple(
+                train_test_split(
+                    X,
+                    y,
+                    test_size=self.boosting_params.val_frac,
+                    random_state=17,
+                    shuffle=True,
+                )
             )
 
-        logging.info("X shape %s", X.shape)
-        logging.info("y shape %s", y.shape)
+            assert (
+                len(split_result) == 4
+            ), "Result of train-test split should contain exactly 4 items"
 
-        if X_val is not None:
-            logging.info("X val shape %s", X_val.shape)
-            logging.info("y val shape %s", y_val.shape)
+            split_result = T.cast(T.Tuple[NDArray, ...], split_result)
+
+            X, X_val, y, y_val = split_result
+
+        elif ds_val is not None:
+            assert isinstance(
+                ds_val.X, ndarray
+            ), "For sklearn models dataset X should be Numpy"
+            assert isinstance(
+                ds_val.y, ndarray
+            ), "For sklearn models dataset y should be Numpy"
+
+            X_val, y_val = ds_val.X, ds_val.y
+
+            assert isinstance(
+                y_val, ndarray
+            ), "Outputs should be present and be numpy (val set)"
+
         else:
-            raise ValueError("This is for val set only, sorry")
+            raise ValueError(
+                "Either validation set should be provided, or parameter val_frac"
+            )
 
         for dim_i in range(self.output_shape[0]):
 
@@ -168,7 +193,7 @@ class BoostingValModel(BaseModel):
 
             if self.early_stopping_in_fit:
                 params["early_stopping_rounds"] = (
-                    self.model_params.early_stopping_rounds
+                    self.boosting_params.early_stopping_rounds
                 )
 
             self.models[dim_i].fit(
@@ -198,7 +223,7 @@ class BoostingValModel(BaseModel):
 
         return concatenate(total_preds, axis=1)
 
-    def cv(self, cv_params: T.Dict, X: NDArray, y: NDArray):
+    def cv(self, cv_params: dict[str, T.Any], ds: Dataset):
         raise NotImplementedError("CV not implemented")
 
     def load(self, dirpath: str) -> None:

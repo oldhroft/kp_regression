@@ -14,14 +14,19 @@ class StreamToLogger(object):  # pragma: no cover
 
     def write(self, buf: str):
         for line in buf.rstrip().splitlines():
-            self.logger.log(self.level, line.rstrip())
+            self.logger.log(getattr(logging, self.level), line.rstrip())
 
     def flush(self):
         pass
 
 
-def config_logger(logger: logging.Logger, level=logging.INFO) -> None:
-    handler = logging.StreamHandler(sys.stdout)
+def config_logger(
+    logger: logging.Logger, level=logging.INFO, stdout: bool = True
+) -> None:
+    if stdout:
+        handler = logging.StreamHandler(sys.stdout)
+    else:
+        handler = logging.StreamHandler()
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -29,4 +34,3 @@ def config_logger(logger: logging.Logger, level=logging.INFO) -> None:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(level)
-

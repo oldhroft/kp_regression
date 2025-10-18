@@ -1,14 +1,14 @@
 import typing as T
 
-from sklearn.metrics import (
+from numpy import isnan
+from numpy.typing import NDArray
+from pandas import DataFrame  # type: ignore
+from sklearn.metrics import (  # type: ignore
+    accuracy_score,
     mean_absolute_error,
     mean_squared_error,
-    accuracy_score,
     r2_score,
 )
-from numpy.typing import NDArray
-from pandas import DataFrame
-from numpy import isnan
 
 from kp_regression.data.postprocess import attach_kp_index_to_grid
 
@@ -21,7 +21,7 @@ def calculate_regression_metrics(
 
     for i in range(y_true.shape[1]):
 
-        metrics = {"horizon": i}
+        metrics: T.Dict[str, T.Any] = {"horizon": i}
 
         pred_i = preds[:, i]
         y_true_i = y_true[:, i]

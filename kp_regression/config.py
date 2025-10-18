@@ -1,6 +1,6 @@
 import typing as T
-
 from dataclasses import dataclass
+
 from kp_regression.utils import load_yaml
 
 
@@ -20,7 +20,7 @@ class ModelConfig:
 
 @dataclass
 class DataConfig:
-    input_path: str
+    input_path: T.Union[str, T.Dict[str, str]]
     pipe_name: str
     pipe_params: dict
     split_params: dict

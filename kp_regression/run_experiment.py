@@ -1,20 +1,18 @@
-import typing as T
-
-import click
+import logging
 import os
-from numpy import savez_compressed
-
+import typing as T
 from dataclasses import asdict
 
-from kp_regression.config import Config
-from kp_regression.utils import safe_mkdir, add_unique_suffix, dump_json
-from kp_regression.logging_utils import config_logger
-from kp_regression.models_zoo import MODEL_FACTORY
-from kp_regression.base_model import BaseModel
-from kp_regression.data import DATA_FACTORY, POST_PROCESS_FACTORY
-from kp_regression.metrics import calculate_regression_metrics
+import click
+from numpy import savez_compressed
 
-import logging
+from kp_regression.base_model import BaseModel
+from kp_regression.config import Config
+from kp_regression.data import DATA_FACTORY, POST_PROCESS_FACTORY
+from kp_regression.logging_utils import config_logger
+from kp_regression.metrics import calculate_regression_metrics
+from kp_regression.models_zoo import MODEL_FACTORY
+from kp_regression.utils import add_unique_suffix, dump_json, safe_mkdir
 
 logger = logging.getLogger()
 
@@ -58,6 +56,11 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
     else:
         data_train, data_test = data.get_train_test(**config.data_config.split_params)
         data_val = None
+
+    assert data_train.y is not None, "Training dataset should have y"
+    assert data_test.y is not None, "Testing dataset should have y"
+    if data_val is not None:
+        assert data_test.y is not None, "Testing dataset should have y"
 
     logger.info("Verifying building from config...")
 

@@ -1,5 +1,6 @@
 import typing as T
-from pandas import DataFrame, Index
+
+from pandas import DataFrame, Index  # type: ignore
 
 
 def _trim(df: DataFrame, forward: bool, trim: bool, lags: int) -> DataFrame:
@@ -17,7 +18,7 @@ def add_lags(
     forward: bool = False,
     lags: int = 1,
     trim: bool = False,
-    suffix_name: str = None,
+    suffix_name: T.Optional[str] = None,
     sort_lags: bool = False,
 ) -> T.Tuple[DataFrame, T.List[str]]:
     if suffix_name is None:
@@ -27,8 +28,11 @@ def add_lags(
 
     digits = len(str(lags))
 
-    columns = []
-    sort_order = {}
+    columns: T.List[str] = []
+    sort_order: T.Dict[str, T.Tuple[int, str]] = {}
+    
+    if subset is None:
+        subset = list(df.columns)
 
     if not isinstance(lags, int):
         raise ValueError(f"Lags should be int, {type(lags)} type prodided")
@@ -36,22 +40,6 @@ def add_lags(
         raise ValueError(f"Lags should be non-negative")
     elif lags == 0:
         return x, []
-    elif subset is None:
-        for i in range(1, lags + 1):
-            lag = -i if forward else i
-            index = str(i).zfill(digits)
-            column_suffix = f"_{suffix_name}_{index}"
-            tmp = x.shift(lag).add_suffix(column_suffix)
-
-            columns.extend(tmp.columns)
-            zipped = list(zip([i for _ in range(len(x.columns))], x.columns))
-
-            sort_order = dict(sort_order, **dict(zip(list(tmp.columns), zipped)))
-
-            x = x.join(x.shift(lag).add_suffix(column_suffix))
-
-        columns = x.columns.tolist()
-
     elif isinstance(subset, list):
         for i in range(1, lags + 1):
             lag = -i if forward else i
@@ -60,9 +48,9 @@ def add_lags(
             tmp = x.loc[:, subset].shift(lag).add_suffix(column_suffix)
             columns.extend(tmp.columns)
 
-            zipped = list(zip([i for _ in range(len(subset))], subset))
-
-            sort_order = dict(sort_order, **dict(zip(list(tmp.columns), zipped)))
+            zipped = list(map(lambda x: (i, x), subset))
+            new_pairs = dict(zip(list(tmp.columns), zipped))
+            sort_order = dict(sort_order, **new_pairs)
 
             x = x.join(tmp)
 
@@ -80,6 +68,49 @@ def add_lags(
     if sort_lags:
         columns = sorted(columns, key=lambda x: sort_order[x], reverse=True)
     return _trim(x, forward, trim, lags), columns
+
+
+def add_diffs(
+    df: DataFrame,
+    subset: T.Optional[T.Union[str, T.List[str]]] = None,
+    lags: int = 1,
+    trim: bool = False,
+    suffix_name: T.Optional[str] = None,
+) -> T.Tuple[DataFrame, T.List[str]]:
+    if suffix_name is None:
+        suffix_name = "diff"
+
+    x = df.copy()
+    digits = len(str(lags))
+    columns = []
+
+    if not isinstance(lags, int):
+        raise ValueError(f"Lags should be int, {type(lags)} type provided")
+    elif lags < 1:
+        raise ValueError("Lags should be positive")
+    elif lags == 0:
+        return x, []
+
+    if subset is None:
+        subset_cols = x.columns.tolist()
+    elif isinstance(subset, str):
+        subset_cols = [subset]
+    elif isinstance(subset, list):
+        subset_cols = subset
+    else:
+        raise ValueError(f"Subset should be str or list, provided type {type(subset)}")
+
+    for i in range(1, lags + 1):
+        index = str(i).zfill(digits)
+        suffix = f"_{suffix_name}_{index}"
+        diffed = x[subset_cols].diff(i).add_suffix(suffix)
+        columns.extend(diffed.columns)
+        x = x.join(diffed)
+
+    if trim:
+        x = x.iloc[lags:]
+
+    return x, columns
 
 
 def rolling_agg(
