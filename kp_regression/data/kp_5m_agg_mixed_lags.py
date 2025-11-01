@@ -1,4 +1,3 @@
-import typing as T
 
 from pandas import DataFrame  # type: ignore
 
@@ -16,16 +15,16 @@ class Kp5mAggMixedLags(KpData5m):
         is_train: bool,
         lags_kp: int = 0,
         lags_h: int = 0,
-        features_h: T.List[str] = ["Dst"],
-        features_1h_ace: T.List[str] = [],
-        features_5m_agg: T.List[str] = [],
-        agg_list: T.List[str] = [],
-        agg_quantiles: T.List[float] = [],
-        features_other: T.List[str] = [],
+        features_h: list[str] = ["Dst"],
+        features_1h_ace: list[str] = [],
+        features_5m_agg: list[str] = [],
+        agg_list: list[str] = [],
+        agg_quantiles: list[float] = [],
+        features_other: list[str] = [],
         n_targets: int = 8,
         diff_kp: bool = False,
-        diff_features: T.List[str] = [],
-        diff_features_5m: T.List[str] = [],
+        diff_features: list[str] = [],
+        diff_features_5m: list[str] = [],
         **kwargs,
     ) -> Dataset:
         from numpy import nan
@@ -41,7 +40,7 @@ class Kp5mAggMixedLags(KpData5m):
         df_1h[features_1h_ace] = df_1h[features_1h_ace].where(
             df_5m[features_1h_ace] > -999.9, nan
         )
-        diff_features_5m_list: T.List[str] = []
+        diff_features_5m_list: list[str] = []
         if len(diff_features_5m) > 0:
             df_5m, diff_features_5m_list = add_diffs(
                 df_5m, subset=diff_features_5m, lags=1, trim=True, suffix_name="diff5m"

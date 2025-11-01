@@ -1,4 +1,3 @@
-import typing as T
 from pandas import DataFrame, concat  # type: ignore
 from sklearn.preprocessing import StandardScaler  # type: ignore
 from kp_regression.data_pipe import Dataset
@@ -9,12 +8,12 @@ def process_data_standard(
     data: DataFrame,
     lags_kp: int,
     lags_h: int,
-    features_h: T.List[str],
-    features_other: T.List[str],
+    features_h: list[str],
+    features_other: list[str],
     n_targets: int,
-    diff_features: T.List[str],
+    diff_features: list[str],
     diff_kp: bool,
-    hour_type: T.Optional[str] = None,
+    hour_type: str | None = None,
 ) -> Dataset:
     if hour_type is not None and hour_type not in ("T0", "T1", "T2"):
         raise ValueError(f"Unknown hour type {hour_type}")
@@ -31,7 +30,7 @@ def process_data_standard(
     data["Kp"] = data["Kp*10"]
     flgs = ["t0_flg", "t1_flg", "t2_flg"]
     base_df = data[features_h + features_other + flgs + meta_cols].ffill()
-    diff_features_list: T.List[str] = []
+    diff_features_list: list[str] = []
     if len(diff_features) > 0:
         base_df, diff_features_list = add_diffs(
             base_df, subset=diff_features, lags=1, trim=True, suffix_name="diff"
@@ -44,7 +43,7 @@ def process_data_standard(
         trim=True,
     )
     kp_list = ["Kp"]
-    kp_diff_features: T.List[str] = []
+    kp_diff_features: list[str] = []
     data_lagged_3h_t0 = data.loc[data.t0_flg, ["dttm", "Kp"]]
     if diff_kp:
         data_lagged_3h_t0, kp_diff_features = add_diffs(
@@ -151,9 +150,9 @@ def process_data_sequence(
     features_h: list,
     features_other: list,
     n_targets: int,
-    scalers: T.Tuple[StandardScaler, StandardScaler, StandardScaler],
+    scalers: tuple[StandardScaler, StandardScaler, StandardScaler],
     scale: bool,
-) -> T.Tuple[Dataset, T.Tuple[StandardScaler, StandardScaler, StandardScaler]]:
+) -> tuple[Dataset, tuple[StandardScaler, StandardScaler, StandardScaler]]:
     scaler1, scaler2, scaler3 = scalers
     data = data.copy()
     data["t0_flg"] = (data["hour to"]) % 3 == 0
@@ -297,10 +296,10 @@ def process_data_sequence_5min(
     features_other: list,
     features_5m: list,
     n_targets: int,
-    scalers: T.Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler],
+    scalers: tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler],
     scale: bool,
-) -> T.Tuple[
-    Dataset, T.Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler]
+) -> tuple[
+    Dataset, tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler]
 ]:
     scaler1, scaler2, scaler3, scaler4 = scalers
     data = data.copy()

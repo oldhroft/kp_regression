@@ -1,4 +1,3 @@
-import typing as T
 
 from pandas import DataFrame, Index  # type: ignore
 
@@ -14,13 +13,13 @@ def _trim(df: DataFrame, forward: bool, trim: bool, lags: int) -> DataFrame:
 
 def add_lags(
     df: DataFrame,
-    subset: T.Optional[T.Union[str, T.List[str]]] = None,
+    subset: str | list[str] | None = None,
     forward: bool = False,
     lags: int = 1,
     trim: bool = False,
-    suffix_name: T.Optional[str] = None,
+    suffix_name: str | None = None,
     sort_lags: bool = False,
-) -> T.Tuple[DataFrame, T.List[str]]:
+) -> tuple[DataFrame, list[str]]:
     if suffix_name is None:
         suffix_name = "lead" if forward else "lag"
 
@@ -28,8 +27,8 @@ def add_lags(
 
     digits = len(str(lags))
 
-    columns: T.List[str] = []
-    sort_order: T.Dict[str, T.Tuple[int, str]] = {}
+    columns: list[str] = []
+    sort_order: dict[str, tuple[int, str]] = {}
     
     if subset is None:
         subset = list(df.columns)
@@ -72,11 +71,11 @@ def add_lags(
 
 def add_diffs(
     df: DataFrame,
-    subset: T.Optional[T.Union[str, T.List[str]]] = None,
+    subset: str | list[str] | None = None,
     lags: int = 1,
     trim: bool = False,
-    suffix_name: T.Optional[str] = None,
-) -> T.Tuple[DataFrame, T.List[str]]:
+    suffix_name: str | None = None,
+) -> tuple[DataFrame, list[str]]:
     if suffix_name is None:
         suffix_name = "diff"
 
@@ -115,9 +114,9 @@ def add_diffs(
 
 def rolling_agg(
     data: DataFrame,
-    windows: T.List[int],
-    functions: T.List[str],
-    subset: T.List[str],
+    windows: list[int],
+    functions: list[str],
+    subset: list[str],
     return_features: bool = True,
 ) -> DataFrame:
     data = data.copy()

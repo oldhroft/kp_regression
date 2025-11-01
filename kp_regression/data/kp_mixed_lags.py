@@ -1,4 +1,3 @@
-import typing as T
 from pandas import DataFrame #type: ignore
 from kp_regression.data_pipe import KpData, Dataset
 from .utils import process_data_standard
@@ -13,9 +12,9 @@ class KpMixedLags(KpData):
         features_h: list = ["Dst"],
         features_other: list = [],
         n_targets: int = 8,
-        hour_type: T.Optional[str] = None,
+        hour_type: str | None = None,
         diff_kp: bool = False,
-        diff_features: T.List[str] = [],
+        diff_features: list[str] = [],
         **kwargs,
     ) -> Dataset:
         return process_data_standard(

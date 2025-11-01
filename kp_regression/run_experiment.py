@@ -1,6 +1,5 @@
 import logging
 import os
-import typing as T
 from dataclasses import asdict
 
 import click
@@ -64,8 +63,8 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
     logger.info("Verifying building from config...")
 
-    built_models: T.Dict[str, BaseModel] = {}
-    model_dirs: T.Dict[str, str] = {}
+    built_models: dict[str, BaseModel] = {}
+    model_dirs: dict[str, str] = {}
 
     model_folder = os.path.join(exp_folder, "models")
     safe_mkdir(model_folder)

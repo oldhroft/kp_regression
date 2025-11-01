@@ -1,4 +1,3 @@
-import typing as T
 
 import torch
 import torch.nn as nn
@@ -28,7 +27,7 @@ def fc_layer(n_inputs: int, n_outputs: int, use_relu: bool = False) -> nn.Module
 
 
 def get_fc_net(
-    input_shape: T.Tuple[int, ...], layers: T.List[int], last: bool = False
+    input_shape: tuple[int, ...], layers: list[int], last: bool = False
 ) -> nn.Sequential:
     assert len(input_shape) == 1, "FCNet only accepts 1D data"
     n_inputs = input_shape[0]
@@ -46,12 +45,12 @@ def get_fc_net(
 
 
 def get_conv1d_backbone(
-    input_shape: T.Tuple[int, ...], layers: T.List[int], kernel_size: int = 3
-) -> T.Tuple[nn.Sequential, int]:
+    input_shape: tuple[int, ...], layers: list[int], kernel_size: int = 3
+) -> tuple[nn.Sequential, int]:
     assert len(input_shape) == 2, "Conv1Net only accepts 2D data"
     n_inputs, n_features = input_shape
 
-    layers_list: T.List[nn.Module] = []
+    layers_list: list[nn.Module] = []
 
     for n_outputs in layers:
 
@@ -71,13 +70,13 @@ def get_conv1d_backbone(
 class Conv1DNet3inputs(nn.Module):
     def __init__(
         self,
-        input_shape1: T.Tuple[int, ...],
-        input_shape2: T.Tuple[int, ...],
-        input_shape3: T.Tuple[int, ...],
-        conv_layers1: T.List[int],
-        conv_layers2: T.List[int],
-        layers: T.List[int],
-        layers_head: T.List[int],
+        input_shape1: tuple[int, ...],
+        input_shape2: tuple[int, ...],
+        input_shape3: tuple[int, ...],
+        conv_layers1: list[int],
+        conv_layers2: list[int],
+        layers: list[int],
+        layers_head: list[int],
         kernel_size: int = 3,
     ) -> None:
         super().__init__()

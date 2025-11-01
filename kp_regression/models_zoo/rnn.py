@@ -25,7 +25,7 @@ def fc_layer(n_inputs: int, n_outputs: int, use_relu: bool = False) -> nn.Module
 
 
 def get_fc_net(
-    input_shape: T.Tuple[int, ...], layers: T.List[int], last: bool = False
+    input_shape: tuple[int, ...], layers: list[int], last: bool = False
 ) -> nn.Sequential:
     assert len(input_shape) == 1, "FCNet only accepts 1D data"
     n_inputs = input_shape[0]
@@ -45,15 +45,15 @@ def get_fc_net(
 class LSTM(nn.Module):
     def __init__(
         self,
-        input_shape1: T.Tuple[int, ...],
-        input_shape2: T.Tuple[int, ...],
-        input_shape3: T.Tuple[int, ...],
+        input_shape1: tuple[int, ...],
+        input_shape2: tuple[int, ...],
+        input_shape3: tuple[int, ...],
         hidden_size1: int,
         hidden_size2: int,
         num_layers1: int,
         num_layers2: int,
-        layers: T.List[int],
-        layers_head: T.List[int],
+        layers: list[int],
+        layers_head: list[int],
         bidirectional: bool = False,
     ) -> None:
         super().__init__()
@@ -95,18 +95,18 @@ class LSTM(nn.Module):
 class LSTM5m(nn.Module):
     def __init__(
         self,
-        input_shape1: T.Tuple[int, ...],
-        input_shape2: T.Tuple[int, ...],
-        input_shape3: T.Tuple[int, ...],
-        input_shape4: T.Tuple[int, ...],
+        input_shape1: tuple[int, ...],
+        input_shape2: tuple[int, ...],
+        input_shape3: tuple[int, ...],
+        input_shape4: tuple[int, ...],
         hidden_size1: int,
         hidden_size2: int,
         hidden_size3: int,
         num_layers1: int,
         num_layers2: int,
         num_layers3: int,
-        layers: T.List[int],
-        layers_head: T.List[int],
+        layers: list[int],
+        layers_head: list[int],
         bidirectional: bool = False,
     ) -> None:
         super().__init__()
@@ -168,7 +168,7 @@ class LSTM3Inputs(BaseModel):
         assert isinstance(self.shape[1], tuple), "Shape 1 should be tuple"
         assert isinstance(self.shape[2], tuple), "Shape 2 should be tuple"
 
-        self.models: T.List[nn.Module] = [
+        self.models: list[nn.Module] = [
             LSTM(
                 input_shape1=self.shape[0],
                 input_shape2=self.shape[1],
@@ -185,7 +185,7 @@ class LSTM3Inputs(BaseModel):
     def train(
         self,
         ds: Dataset,
-        ds_val: T.Optional[Dataset] = None,
+        ds_val: Dataset | None = None,
     ) -> None:
 
         assert ds.y is not None, "Dataset should contain y"
@@ -299,7 +299,7 @@ class LSTM3Inputs(BaseModel):
 
         return concatenate(total_preds, axis=1)
 
-    def cv(self, cv_params: T.Dict[str, T.Any], ds: Dataset):
+    def cv(self, cv_params: dict[str, T.Any], ds: Dataset):
         raise NotImplementedError("Not implemented")
 
     def save(self, file_path: str) -> None:

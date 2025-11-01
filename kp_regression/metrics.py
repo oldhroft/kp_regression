@@ -15,13 +15,13 @@ from kp_regression.data.postprocess import attach_kp_index_to_grid
 
 def calculate_regression_metrics(
     preds: NDArray, y_true: NDArray, meta: DataFrame
-) -> T.List[dict]:
+) -> list[dict]:
 
     results = []
 
     for i in range(y_true.shape[1]):
 
-        metrics: T.Dict[str, T.Any] = {"horizon": i}
+        metrics: dict[str, T.Any] = {"horizon": i}
 
         pred_i = preds[:, i]
         y_true_i = y_true[:, i]

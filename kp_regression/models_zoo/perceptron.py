@@ -28,9 +28,9 @@ class MLP(nn.Module):
 
     def __init__(
         self,
-        input_shape: T.Tuple[int],
-        layers: T.List[int],
-        dropout: T.Optional[float] = None,
+        input_shape: tuple[int],
+        layers: list[int],
+        dropout: float | None = None,
     ) -> None:
         super().__init__()
 
@@ -38,7 +38,7 @@ class MLP(nn.Module):
 
         n_inputs = input_shape[0]
 
-        layers_list: T.List[nn.Module] = []
+        layers_list: list[nn.Module] = []
 
         for n_outputs in layers[:-1]:
             layers_list.append(nn.Linear(n_inputs, n_outputs))
@@ -60,7 +60,7 @@ class MLPClassMulti(BaseModel):
 
         assert len(self.shape) == 1, "MLP accepts only 1d input"
         assert isinstance(self.shape[0], int), "MLP accepts only 1d input"
-        self.shape = T.cast(T.Tuple[int], self.shape)
+        self.shape = T.cast(tuple[int], self.shape)
 
         self.torch_model_params = TorchModelParams(**self.model_params)
 
@@ -75,7 +75,7 @@ class MLPClassMulti(BaseModel):
     def train(
         self,
         ds: Dataset,
-        ds_val: T.Optional[Dataset] = None,
+        ds_val: Dataset | None = None,
     ) -> None:
         X, y, X_val, y_val = check_data_and_get_train_val_plain_input(
             ds, ds_val, self.torch_model_params.val_frac, error_if_both_absent=False
@@ -169,7 +169,7 @@ class MLPClassMulti(BaseModel):
 
         return concatenate(total_preds, axis=1)
 
-    def cv(self, cv_params: T.Dict[str, T.Any], ds: Dataset):
+    def cv(self, cv_params: dict[str, T.Any], ds: Dataset):
         raise NotImplementedError("Not implemented")
 
     def save(self, file_path: str) -> None:
@@ -199,7 +199,7 @@ class MLPClass(BaseModel):
         assert len(self.shape) == 1, "MLP accepts only 1d input"
         assert len(self.shape) == 1, "MLP accepts only 1d input"
         assert isinstance(self.shape[0], int), "MLP accepts only 1d input"
-        self.shape = T.cast(T.Tuple[int], self.shape)
+        self.shape = T.cast(tuple[int], self.shape)
         
         self.torch_model_params = TorchModelParams(**self.model_params)
 
@@ -214,7 +214,7 @@ class MLPClass(BaseModel):
     def train(
         self,
         ds: Dataset,
-        ds_val: T.Optional[Dataset] = None,
+        ds_val: Dataset | None = None,
     ) -> None:
         X, y, X_val, y_val = check_data_and_get_train_val_plain_input(
             ds, ds_val, self.torch_model_params.val_frac, error_if_both_absent=False
@@ -257,7 +257,7 @@ class MLPClass(BaseModel):
         )
         self.model = training_module_restored.model  # type: ignore
 
-    def cv(self, cv_params: T.Dict[str, T.Any], ds: Dataset):
+    def cv(self, cv_params: dict[str, T.Any], ds: Dataset):
         raise NotImplementedError("Not implemented")
 
     def predict(self, ds: Dataset) -> NDArray:
