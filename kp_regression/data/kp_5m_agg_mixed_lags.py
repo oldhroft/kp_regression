@@ -46,6 +46,7 @@ class Kp5mAggMixedLags(KpData5m):
         diff_features: list[str] = [],
         diff_features_5m: list[str] = [],
         use_5m_values: bool = False,
+        target: str = "Kp",
         **kwargs,
     ) -> Dataset:
         from numpy import nan
@@ -108,4 +109,5 @@ class Kp5mAggMixedLags(KpData5m):
             hour_type=None,
             diff_kp=diff_kp,
             diff_features=diff_features,
+            target=target
         )

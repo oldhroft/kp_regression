@@ -18,6 +18,7 @@ class KpMixedLagsSeq(KpData):
         features_other: list[str] = [],
         n_targets: int = 8,
         scale: bool = False,
+        target: str = "Kp",
         **kwargs,
     ) -> Dataset:
         if is_train:
@@ -40,6 +41,7 @@ class KpMixedLagsSeq(KpData):
             n_targets=n_targets,
             scale=scale,
             scalers=scalers,
+            target=target
         )
         if is_train:
             self.scalers = scalers

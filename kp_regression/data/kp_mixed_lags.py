@@ -1,6 +1,7 @@
-from pandas import DataFrame #type: ignore
+from pandas import DataFrame  # type: ignore
 from kp_regression.data_pipe import KpData, Dataset
 from .utils import process_data_standard
+
 
 class KpMixedLags(KpData):
     def process_data(
@@ -15,6 +16,7 @@ class KpMixedLags(KpData):
         hour_type: str | None = None,
         diff_kp: bool = False,
         diff_features: list[str] = [],
+        target: str = "Kp",
         **kwargs,
     ) -> Dataset:
         return process_data_standard(
@@ -27,4 +29,5 @@ class KpMixedLags(KpData):
             hour_type=hour_type,
             diff_kp=diff_kp,
             diff_features=diff_features,
+            target=target,
         )

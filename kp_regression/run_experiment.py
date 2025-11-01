@@ -114,7 +114,7 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
         logger.info("Training model %s", model_cfg.model_name)
 
-        print("Feature", data_train.feature_names)
+        print("Feature", data_train.target_names)
         if config.data_config.use_val:
             model.train(data_train, data_val)
         else:
