@@ -61,6 +61,8 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
     if data_val is not None:
         assert data_test.y is not None, "Testing dataset should have y"
 
+    logger.info("Target columns %s", data_train.target_names)
+
     logger.info("Verifying building from config...")
 
     built_models: dict[str, BaseModel] = {}
@@ -114,7 +116,6 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
         logger.info("Training model %s", model_cfg.model_name)
 
-        print("Feature", data_train.target_names)
         if config.data_config.use_val:
             model.train(data_train, data_val)
         else:
