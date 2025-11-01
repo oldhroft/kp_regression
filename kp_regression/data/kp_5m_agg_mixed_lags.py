@@ -1,9 +1,29 @@
-
-from pandas import DataFrame  # type: ignore
+from pandas import DataFrame, concat, date_range  # type: ignore
 
 from kp_regression.data.utils import process_data_standard
 from kp_regression.data_pipe import Dataset, KpData5m
 from kp_regression.data_utils import add_diffs
+
+
+def create_5m_value_features(df_5m: DataFrame, features_5m_agg: list[str]) -> DataFrame:
+    df_5m = df_5m.copy()
+    df_5m["dttm_hour"] = df_5m["dttm"].dt.floor("h")
+    df_5m["position"] = df_5m["dttm"].dt.minute // 5
+
+    hour_index = date_range(
+        start=df_5m["dttm_hour"].min(),
+        end=df_5m["dttm_hour"].max(),
+        freq="h",
+    )
+
+    value_dfs = []
+    for pos in range(12):
+        df_pos = df_5m[df_5m["position"] == pos][["dttm_hour"] + features_5m_agg]
+        df_pos = df_pos.set_index("dttm_hour").reindex(hour_index)
+        df_pos = df_pos.add_suffix(f"_val_{pos}")
+        value_dfs.append(df_pos)
+
+    return concat(value_dfs, axis=1)
 
 
 class Kp5mAggMixedLags(KpData5m):
@@ -25,10 +45,11 @@ class Kp5mAggMixedLags(KpData5m):
         diff_kp: bool = False,
         diff_features: list[str] = [],
         diff_features_5m: list[str] = [],
+        use_5m_values: bool = False,
         **kwargs,
     ) -> Dataset:
         from numpy import nan
-        from pandas import Grouper, concat
+        from pandas import Grouper
 
         save_cols = ["dttm", "hour from", "hour to", "Kp*10"]
         df_5m = df_5m.copy()
@@ -63,6 +84,11 @@ class Kp5mAggMixedLags(KpData5m):
             ],
             axis=1,
         )
+
+        if use_5m_values:
+            df_5m_values = create_5m_value_features(df_5m, features_5m_agg)
+            df_5m_agg = df_5m_agg.join(df_5m_values, how="left")
+
         agg_features = list(df_5m_agg.columns)
         intersecting_columns = set(features_1h_ace).intersection(features_h)
         if len(intersecting_columns) > 0:

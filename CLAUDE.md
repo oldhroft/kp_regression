@@ -32,3 +32,7 @@ When unsure about methods or attributes of a class:
   1. Read the source code directly
   2. Use web search to find official documentation
   3. Inspect the actual implementation
+
+## Code Comments
+
+- **Do NOT add comments to code unless explicitly requested**
