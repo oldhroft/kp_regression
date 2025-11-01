@@ -164,9 +164,9 @@ class LSTM3Inputs(BaseModel):
         n_inputs = 3
         self.torch_model_params = TorchModelParams(**self.model_params)
         assert len(self.shape) == n_inputs, "Shape should contain 3 inputs"
-        assert isinstance(self.shape[0], tuple), f"Shape 0 should be tuple"
-        assert isinstance(self.shape[1], tuple), f"Shape 1 should be tuple"
-        assert isinstance(self.shape[2], tuple), f"Shape 2 should be tuple"
+        assert isinstance(self.shape[0], tuple), "Shape 0 should be tuple"
+        assert isinstance(self.shape[1], tuple), "Shape 1 should be tuple"
+        assert isinstance(self.shape[2], tuple), "Shape 2 should be tuple"
 
         self.models: T.List[nn.Module] = [
             LSTM(
@@ -219,7 +219,7 @@ class LSTM3Inputs(BaseModel):
 
             logging.info("Built data for %s", dim_i)
 
-            checkpoints_folder = os.path.join(self.model_dir, f"checkpoints")
+            checkpoints_folder = os.path.join(self.model_dir, "checkpoints")
 
             safe_mkdir(checkpoints_folder)
 
@@ -325,10 +325,10 @@ class LSTM4Inputs(LSTM3Inputs):
         assert len(self.shape) == self.n_inputs, "Shape should contain 4 inputs"
 
         assert len(self.shape) == 4, "Shape should contain 3 inputs"
-        assert isinstance(self.shape[0], tuple), f"Shape 0 should be tuple"
-        assert isinstance(self.shape[1], tuple), f"Shape 1 should be tuple"
-        assert isinstance(self.shape[2], tuple), f"Shape 2 should be tuple"
-        assert isinstance(self.shape[3], tuple), f"Shape 3 should be tuple"
+        assert isinstance(self.shape[0], tuple), "Shape 0 should be tuple"
+        assert isinstance(self.shape[1], tuple), "Shape 1 should be tuple"
+        assert isinstance(self.shape[2], tuple), "Shape 2 should be tuple"
+        assert isinstance(self.shape[3], tuple), "Shape 3 should be tuple"
 
         self.models = [
             LSTM5m(

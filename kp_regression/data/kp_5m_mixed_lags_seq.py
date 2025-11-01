@@ -1,5 +1,3 @@
-import typing as T
-
 from pandas import DataFrame  # type: ignore
 from sklearn.preprocessing import StandardScaler  # type: ignore
 

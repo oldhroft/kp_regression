@@ -144,7 +144,7 @@ def process_data(
         data.with_columns(
             pl.col("data")
             .str.strip_chars_end(" ")
-            .str.replace_all("\s+", " ")
+            .str.replace_all(r"\s+", " ")
             .str.split(" ")
             .alias("data_list")
         )
@@ -174,7 +174,7 @@ def load_data(path: str, **read_cfg) -> pl.LazyFrame:
 
     try:
         df = pl.read_csv(path, **read_cfg).lazy()
-    except HTTPError as e:
+    except HTTPError:
         logger.info("not found skipping file %s", path)
         df = pl.LazyFrame([], schema=pl.Schema({"data": pl.String}))
     return df

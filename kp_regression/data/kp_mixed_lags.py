@@ -1,7 +1,6 @@
 import typing as T
 from pandas import DataFrame #type: ignore
 from kp_regression.data_pipe import KpData, Dataset
-from kp_regression.data_utils import add_diffs, add_lags
 from .utils import process_data_standard
 
 class KpMixedLags(KpData):

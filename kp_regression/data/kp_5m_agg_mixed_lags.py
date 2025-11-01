@@ -28,7 +28,7 @@ class Kp5mAggMixedLags(KpData5m):
         diff_features_5m: T.List[str] = [],
         **kwargs,
     ) -> Dataset:
-        from numpy import NaN
+        from numpy import nan
         from pandas import Grouper, concat
 
         save_cols = ["dttm", "hour from", "hour to", "Kp*10"]
@@ -36,10 +36,10 @@ class Kp5mAggMixedLags(KpData5m):
         df_1h = df_1h.copy()
         df = df.copy()
         df_5m[features_5m_agg] = df_5m[features_5m_agg].where(
-            df_5m[features_5m_agg] > -999.9, NaN
+            df_5m[features_5m_agg] > -999.9, nan
         )
         df_1h[features_1h_ace] = df_1h[features_1h_ace].where(
-            df_5m[features_1h_ace] > -999.9, NaN
+            df_5m[features_1h_ace] > -999.9, nan
         )
         diff_features_5m_list: T.List[str] = []
         if len(diff_features_5m) > 0:

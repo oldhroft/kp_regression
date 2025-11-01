@@ -40,7 +40,7 @@ class Dataset:
             if self.y is not None:
                 save_args["y"] = self.y
 
-            savez_compressed(out_path, **save_args)
+            savez_compressed(out_path, **save_args)  # type: ignore[arg-type]
 
             meta_path = os.path.join(path, "meta.csv")
             self.meta.to_csv(meta_path, index=None)

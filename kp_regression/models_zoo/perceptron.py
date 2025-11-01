@@ -102,7 +102,7 @@ class MLPClassMulti(BaseModel):
             else:
                 dl_val = None
             logging.info("Built data for %s", dim_i)
-            checkpoints_folder = os.path.join(self.model_dir, f"checkpoints")
+            checkpoints_folder = os.path.join(self.model_dir, "checkpoints")
             safe_mkdir(checkpoints_folder)
             checkpoints_folder_i = os.path.join(
                 checkpoints_folder, f"checkpoints{dim_i}"

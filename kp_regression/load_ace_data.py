@@ -123,7 +123,7 @@ def build_file_list(from_year: int, to_year: int) -> T.List[str]:
         links = soup.find_all("a", href=True)
 
         # Extract directory names (hrefs ending with '/')
-        return [link["href"] for link in links if link["href"]]
+        return [str(link["href"]) for link in links if link["href"]]
 
     logger.info("Building initial urls list")
     all_urls = get_hrefs(BROWSE_URL)

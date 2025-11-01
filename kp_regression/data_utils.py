@@ -37,7 +37,7 @@ def add_lags(
     if not isinstance(lags, int):
         raise ValueError(f"Lags should be int, {type(lags)} type prodided")
     elif lags < 0:
-        raise ValueError(f"Lags should be non-negative")
+        raise ValueError("Lags should be non-negative")
     elif lags == 0:
         return x, []
     elif isinstance(subset, list):
