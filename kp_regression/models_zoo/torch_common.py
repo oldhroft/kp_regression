@@ -85,7 +85,6 @@ class TrainingModule(LightningModule):
             mode="min",
             factor=self.lr_reduce_factor,
             patience=self.lr_reduce_patience,
-            verbose=True,
         )
 
         lr_dict = {
@@ -160,7 +159,6 @@ class TrainingModuleNInputs(LightningModule):
             mode="min",
             factor=self.lr_reduce_factor,
             patience=self.lr_reduce_patience,
-            verbose=True,
         )
         lr_dict = {
             "scheduler": lr_scheduler,
