@@ -1,12 +1,12 @@
 import os
 
-from catboost import CatBoostRegressor  # type: ignore
+from catboost import CatBoostRegressor
 from lightgbm import LGBMRegressor
-from sklearn.base import BaseEstimator  # type: ignore
-from sklearn.ensemble import RandomForestRegressor  # type: ignore
-from sklearn.linear_model import Lasso, Ridge  # type: ignore
-from sklearn.pipeline import Pipeline  # type: ignore
-from sklearn.preprocessing import StandardScaler  # type: ignore
+from sklearn.base import BaseEstimator
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Lasso, Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from kp_regression.models_zoo.column_estimator import ColumnEstimator
 from kp_regression.models_zoo.sklearn_models import (
@@ -33,7 +33,7 @@ class CatBoostRegressorClass(SklearnMultiOutputModel):
         dirpath = os.path.join(self.model_dir, "hist")
 
         safe_mkdir(dirpath)
-        return CatBoostRegressor(train_dir=dirpath)
+        return CatBoostRegressor(train_dir=dirpath)  # ty: ignore[invalid-return-type]
 
 
 class CatBoostRegressorValClass(BoostingValModel):
@@ -46,7 +46,7 @@ class CatBoostRegressorValClass(BoostingValModel):
 
         safe_mkdir(histpath)
 
-        return CatBoostRegressor(train_dir=histpath)
+        return CatBoostRegressor(train_dir=histpath)  # ty: ignore[invalid-return-type]
 
 
 class RandomForestRegressorClass(SklearnMultiOutputModel):
@@ -55,19 +55,17 @@ class RandomForestRegressorClass(SklearnMultiOutputModel):
 
 
 class RidgeClass(SklearnMultiOutputModel):
-    def get_model(self) -> None:
-
+    def get_model(self) -> BaseEstimator:
         steps = [("scaler", StandardScaler()), ("ridge", Ridge())]
 
         return Pipeline(steps=steps)
 
 
 class LassoClass(SklearnMultiOutputModel):
-    def get_model(self) -> None:
+    def get_model(self) -> BaseEstimator:
         return Lasso()
 
 
 class ColumnEstimatorClass(SklearnMultiOutputModel):
-
     def get_model(self) -> BaseEstimator:
         return ColumnEstimator()

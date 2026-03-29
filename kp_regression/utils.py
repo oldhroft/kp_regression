@@ -6,15 +6,15 @@ from uuid import uuid4
 
 import yaml
 from numpy import ndarray
-from sklearn.base import BaseEstimator  # type: ignore
-from sklearn.pipeline import Pipeline  # type: ignore
+from sklearn.base import BaseEstimator
+from sklearn.pipeline import Pipeline
 
 
 class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, ndarray):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
+    def default(self, o: T.Any) -> T.Any:
+        if isinstance(o, ndarray):
+            return o.tolist()
+        return json.JSONEncoder.default(self, o)
 
 
 def safe_mkdir(name: str) -> None:
@@ -45,7 +45,6 @@ def dump_json(obj: T.Any, path: str) -> None:
 
 
 def add_unique_suffix(name: str, add_date: bool = True, add_uuid: bool = True) -> str:
-
     if add_date:
         dttm = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     if add_uuid:
@@ -62,11 +61,9 @@ def add_unique_suffix(name: str, add_date: bool = True, add_uuid: bool = True) -
 def serialize_params(model: BaseEstimator) -> list[dict]:
     result = []
     if isinstance(model, Pipeline):
-
         for key, value in model.named_steps.items():
             result.append({"model": key, "params": value.get_params()})
     else:
-
         result.append({"model": "model", "params": model.get_params()})
 
     return result

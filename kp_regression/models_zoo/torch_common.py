@@ -53,9 +53,7 @@ class TrainingModule(LightningModule):
 
         return loss
 
-    def validation_step(
-        self, batch: tuple[Tensor, Tensor], batch_idx: T.Any
-    ) -> Tensor:
+    def validation_step(self, batch: tuple[Tensor, Tensor], batch_idx: T.Any) -> Tensor:
         x, y = batch
         y_pred: Tensor = self.model(x)
 
@@ -175,7 +173,6 @@ def get_dataloader_from_dataset(
     shuffle: bool,
     batch_size: int,
 ) -> DataLoader:
-
     if y is not None:
         ds = TensorDataset(
             from_numpy(X.astype("float32")), from_numpy(y.astype("float32"))
@@ -200,7 +197,6 @@ def get_dataloader_from_dataset_tuple(
 def build_callbacks(
     folder: str, cfg: TorchModelParams
 ) -> tuple[ModelCheckpoint, EarlyStopping]:
-
     safe_mkdir(folder)
 
     TrainingModuleCheckpoint = ModelCheckpoint(dirpath=folder, **cfg.checkpoint_cfg)

@@ -12,8 +12,11 @@ from torch import save
 from kp_regression.base_model import BaseModel
 from kp_regression.data_pipe import Dataset
 from kp_regression.models_zoo.torch_common import (
-    TorchModelParams, TrainingModuleNInputs, build_callbacks,
-    get_dataloader_from_dataset_tuple)
+    TorchModelParams,
+    TrainingModuleNInputs,
+    build_callbacks,
+    get_dataloader_from_dataset_tuple,
+)
 from kp_regression.utils import safe_mkdir
 
 
@@ -158,9 +161,7 @@ class LSTM5m(nn.Module):
 
 
 class LSTM3Inputs(BaseModel):
-
     def build(self) -> None:
-
         n_inputs = 3
         self.torch_model_params = TorchModelParams(**self.model_params)
         assert len(self.shape) == n_inputs, "Shape should contain 3 inputs"
@@ -187,7 +188,6 @@ class LSTM3Inputs(BaseModel):
         ds: Dataset,
         ds_val: Dataset | None = None,
     ) -> None:
-
         assert ds.y is not None, "Dataset should contain y"
         assert isinstance(ds.X, tuple), "Dataset for the model should be tuple"
 
@@ -263,14 +263,13 @@ class LSTM3Inputs(BaseModel):
                 model=self.models[dim_i],
                 **self.torch_model_params.train_params,
             )
-            assert hasattr(
-                training_module_restored, "model"
-            ), "Training module should have model attr"
+            assert hasattr(training_module_restored, "model"), (
+                "Training module should have model attr"
+            )
 
-            self.models[dim_i] = training_module_restored.model  # type: ignore
+            self.models[dim_i] = training_module_restored.model
 
     def predict(self, ds: Dataset) -> NDArray:
-
         assert isinstance(ds.X, tuple), "Dataset for the model should be tuple"
 
         total_preds = []
@@ -287,7 +286,9 @@ class LSTM3Inputs(BaseModel):
             trainer = Trainer(accelerator=self.torch_model_params.accelerator)
 
             dl_test = get_dataloader_from_dataset_tuple(
-                ds.X, shuffle=False, **self.torch_model_params.data_params
+                ds.X,  # ty: ignore[invalid-argument-type]
+                shuffle=False,
+                **self.torch_model_params.data_params,
             )
             preds_list = trainer.predict(module, dl_test)
 
@@ -303,7 +304,6 @@ class LSTM3Inputs(BaseModel):
         raise NotImplementedError("Not implemented")
 
     def save(self, file_path: str) -> None:
-
         safe_mkdir(file_path)
 
         for i, model in enumerate(self.models):
@@ -316,9 +316,7 @@ class LSTM3Inputs(BaseModel):
 
 
 class LSTM4Inputs(LSTM3Inputs):
-
     def build(self) -> None:
-
         n_inputs = 4
 
         self.torch_model_params = TorchModelParams(**self.model_params)

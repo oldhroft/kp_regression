@@ -1,4 +1,4 @@
-from pandas import DataFrame, concat, date_range  # type: ignore
+from pandas import DataFrame, concat, date_range
 
 from kp_regression.data.utils import process_data_standard
 from kp_regression.data_pipe import Dataset, KpData5m
@@ -75,7 +75,7 @@ class Kp5mAggMixedLags(KpData5m):
                     .agg(agg_list)
                     .join(
                         df_5m.groupby(Grouper(key="dttm", freq="h"))[feat]
-                        .quantile(agg_quantiles)
+                        .quantile(agg_quantiles)  # ty: ignore[invalid-argument-type]
                         .unstack(level=1)
                         .add_prefix("q")
                     )
@@ -109,5 +109,5 @@ class Kp5mAggMixedLags(KpData5m):
             hour_type=None,
             diff_kp=diff_kp,
             diff_features=diff_features,
-            target=target
+            target=target,
         )

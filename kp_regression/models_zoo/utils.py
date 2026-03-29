@@ -3,7 +3,7 @@ import typing as T
 
 from numpy import ndarray
 from numpy.typing import NDArray
-from sklearn.model_selection import train_test_split  # type: ignore
+from sklearn.model_selection import train_test_split
 
 from kp_regression.data_pipe import Dataset
 
@@ -41,9 +41,9 @@ def check_data_and_get_train_val_plain_input(
             )
         )
 
-        assert (
-            len(split_result) == 4
-        ), "Result of train-test split should contain exactly 4 items"
+        assert len(split_result) == 4, (
+            "Result of train-test split should contain exactly 4 items"
+        )
 
         split_result = T.cast(tuple[NDArray, ...], split_result)
 

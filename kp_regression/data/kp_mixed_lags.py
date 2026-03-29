@@ -1,4 +1,4 @@
-from pandas import DataFrame  # type: ignore
+from pandas import DataFrame
 from kp_regression.data_pipe import KpData, Dataset
 from .utils import process_data_standard
 

@@ -7,8 +7,8 @@ from urllib.error import HTTPError
 import click
 import polars as pl
 import polars.type_aliases as pdt
-from joblib import Parallel, delayed  # type: ignore
-from tqdm import tqdm  # type: ignore
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from kp_regression.logging_utils import config_logger
 
@@ -136,7 +136,6 @@ def process_data(
     from_date: str,
     to_date: str,
 ) -> pl.LazyFrame:
-
     from_dttm = datetime.datetime.fromisoformat(from_date)
     to_dttm = datetime.datetime.fromisoformat(to_date)
 
@@ -150,7 +149,7 @@ def process_data(
         )
         .select(pl.col("data_list").list.to_struct(fields=list(init_schema.keys())))
         .unnest("data_list")
-        .cast(init_schema)  # type: ignore
+        .cast(init_schema)  # ty: ignore[invalid-argument-type]
         .with_columns(
             pl.col("time").str.slice(0, 2).cast(pl.Int32).alias("hour"),
             pl.col("time").str.slice(2, 4).cast(pl.Int32).alias("minute"),
@@ -165,13 +164,12 @@ def process_data(
             ).alias("dttm")
         )
         .select(list(schema.keys()))
-        .cast(schema)  # type: ignore
+        .cast(schema)  # ty: ignore[invalid-argument-type]
         .filter(pl.col("dttm").is_between(from_dttm, to_dttm))
     )
 
 
 def load_data(path: str, **read_cfg) -> pl.LazyFrame:
-
     try:
         df = pl.read_csv(path, **read_cfg).lazy()
     except HTTPError:
@@ -186,7 +184,6 @@ def get_file_range(
     data_type: DataOptions = "ace_swepam",
     freq: FreqOptions = "1h",
 ) -> list[str]:
-
     agg_level = AGG_LEVEL[freq]
 
     from_dttm = datetime.datetime.fromisoformat(from_date)
@@ -227,7 +224,6 @@ def get_file_range(
 def download_ace_data(
     from_date: str, to_date: str, output_folder: str, data_type: str, freq: str
 ) -> None:
-
     if data_type not in TYPES:
         raise ValueError(
             f"Unknown data: {data_type}, possible data types: {';'.join(TYPES)}"
@@ -295,9 +291,9 @@ def download_ace_data(
         pl.max("dttm").alias("max_dttm"),
     ).collect()
 
-    logger.info("Total records in data %s", stat["cnt_records"].item())
-    logger.info("Min dttm in data %s", stat["min_dttm"].item())
-    logger.info("Max dttm in data %s", stat["max_dttm"].item())
+    logger.info("Total records in data %s", stat["cnt_records"].item())  # ty: ignore[not-subscriptable]
+    logger.info("Min dttm in data %s", stat["min_dttm"].item())  # ty: ignore[not-subscriptable]
+    logger.info("Max dttm in data %s", stat["max_dttm"].item())  # ty: ignore[not-subscriptable]
 
     logger.info("Saving data to %s", path)
 

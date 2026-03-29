@@ -7,7 +7,7 @@ After completing each task, always run both linters to ensure code quality:
 ```bash
 uv run --extra dev ruff check .
 
-uv run --extra dev mypy kp_regression --show-error-codes
+uv run --extra dev ty check kp_regression
 ```
 
 Both commands should pass with no errors before considering a task complete.

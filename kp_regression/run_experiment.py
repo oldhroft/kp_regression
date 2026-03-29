@@ -22,7 +22,6 @@ logger = logging.getLogger()
     "--exp_folder", help="Path to exp folder", type=click.STRING, required=True
 )
 def run(config_path: str, exp_folder: str, report: bool = False) -> None:
-
     safe_mkdir(exp_folder)
 
     config_logger(logger)
@@ -75,7 +74,6 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
 
     names = []
     for model_cfg in config.models:
-
         logger.info(
             "Building model %s of %s", model_cfg.model_name, model_cfg.model_type
         )
@@ -98,7 +96,6 @@ def run(config_path: str, exp_folder: str, report: bool = False) -> None:
         raise ValueError("Model names should be unique!")
 
     for model_cfg in config.models:
-
         logger.info("=" * 50)
         logger.info("Model config %s", model_cfg)
         model_dir = model_dirs[model_cfg.model_name]
