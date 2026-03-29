@@ -1,5 +1,4 @@
-
-from pandas import DataFrame, Index  # type: ignore
+from pandas import DataFrame, Index
 
 
 def _trim(df: DataFrame, forward: bool, trim: bool, lags: int) -> DataFrame:
@@ -29,7 +28,7 @@ def add_lags(
 
     columns: list[str] = []
     sort_order: dict[str, tuple[int, str]] = {}
-    
+
     if subset is None:
         subset = list(df.columns)
 
@@ -118,7 +117,7 @@ def rolling_agg(
     functions: list[str],
     subset: list[str],
     return_features: bool = True,
-) -> DataFrame:
+) -> DataFrame | tuple[DataFrame, list[str]]:
     data = data.copy()
     features = []
     index_subset = Index(subset)

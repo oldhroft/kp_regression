@@ -36,7 +36,6 @@ INDICES = array(
 
 
 def attach_kp_index_to_grid(y: NDArray) -> NDArray:
-
     abs_diff_amin = (abs(y[..., None] - INDICES.reshape(1, 1, -1))).argmin(axis=2)
 
     return take_along_axis(
@@ -45,5 +44,4 @@ def attach_kp_index_to_grid(y: NDArray) -> NDArray:
 
 
 def clip_kp(y: NDArray) -> NDArray:
-
     return clip(y, 0, 90)

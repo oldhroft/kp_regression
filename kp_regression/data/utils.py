@@ -1,5 +1,5 @@
-from pandas import DataFrame, concat  # type: ignore
-from sklearn.preprocessing import StandardScaler  # type: ignore
+from pandas import DataFrame, concat
+from sklearn.preprocessing import StandardScaler
 from kp_regression.data_pipe import Dataset
 from kp_regression.data_utils import add_diffs, add_lags
 

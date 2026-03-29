@@ -4,13 +4,13 @@ import typing as T
 
 import torch
 import torch.nn as nn
-from joblib import dump, load  # type: ignore
+from joblib import dump, load
 from numpy import concatenate, ndarray
 from numpy.typing import NDArray
 from pytorch_lightning import Trainer
-from sklearn.preprocessing import StandardScaler  # type: ignore
+from sklearn.preprocessing import StandardScaler
 from torch import save
-from torchsummary import summary  # type: ignore
+from torchsummary import summary
 
 from kp_regression.base_model import BaseModel
 from kp_regression.data_pipe import Dataset
@@ -25,7 +25,6 @@ from kp_regression.utils import safe_mkdir
 
 
 class MLP(nn.Module):
-
     def __init__(
         self,
         input_shape: tuple[int],
@@ -55,9 +54,7 @@ class MLP(nn.Module):
 
 
 class MLPClassMulti(BaseModel):
-
     def build(self) -> None:
-
         assert len(self.shape) == 1, "MLP accepts only 1d input"
         assert isinstance(self.shape[0], int), "MLP accepts only 1d input"
         self.shape = T.cast(tuple[int], self.shape)
@@ -136,7 +133,7 @@ class MLPClassMulti(BaseModel):
                 model=self.models[dim_i],
                 **self.torch_model_params.train_params,
             )
-            self.models[dim_i] = training_module_restored.model  # type: ignore
+            self.models[dim_i] = training_module_restored.model  # ty: ignore[invalid-assignment]
 
     def predict(self, ds: Dataset) -> NDArray:
         assert isinstance(ds.X, ndarray), "For MLP dataset should be Numpy"
@@ -173,7 +170,6 @@ class MLPClassMulti(BaseModel):
         raise NotImplementedError("Not implemented")
 
     def save(self, file_path: str) -> None:
-
         safe_mkdir(file_path)
 
         for i, model in enumerate(self.models):
@@ -183,29 +179,29 @@ class MLPClassMulti(BaseModel):
         path_scaler = os.path.join(file_path, "scaler.sav")
         dump(self.scaler, path_scaler)
 
-    def load(self, dirpath: str) -> None:
+    def load(self, path: str) -> None:
         for i, model in enumerate(self.models):
-            path = os.path.join(dirpath, f"weights{i}.pth")
-            model.load_state_dict(torch.load(path))
+            fpath = os.path.join(path, f"weights{i}.pth")
+            model.load_state_dict(torch.load(fpath))
 
-        path_scaler = os.path.join(dirpath, "scaler.sav")
+        path_scaler = os.path.join(path, "scaler.sav")
         self.scaler = load(path_scaler)
 
 
 class MLPClass(BaseModel):
-
     def build(self) -> None:
-
         assert len(self.shape) == 1, "MLP accepts only 1d input"
         assert len(self.shape) == 1, "MLP accepts only 1d input"
         assert isinstance(self.shape[0], int), "MLP accepts only 1d input"
         self.shape = T.cast(tuple[int], self.shape)
-        
+
         self.torch_model_params = TorchModelParams(**self.model_params)
 
         assert (
             self.output_shape[0] == self.torch_model_params.model_params["layers"][-1]
-        ), "For predicting all steps at once neurons in the last layers should be exactly equal to the number of targets"
+        ), (
+            "For predicting all steps at once neurons in the last layers should be exactly equal to the number of targets"
+        )
 
         self.model = MLP(self.shape, **self.torch_model_params.model_params)
         self.scaler = StandardScaler()
@@ -255,7 +251,7 @@ class MLPClass(BaseModel):
         training_module_restored = TrainingModule.load_from_checkpoint(
             best_model, model=self.model, **self.torch_model_params.train_params
         )
-        self.model = training_module_restored.model  # type: ignore
+        self.model = training_module_restored.model
 
     def cv(self, cv_params: dict[str, T.Any], ds: Dataset):
         raise NotImplementedError("Not implemented")
@@ -284,7 +280,6 @@ class MLPClass(BaseModel):
         return preds_concat
 
     def save(self, file_path: str) -> None:
-
         safe_mkdir(file_path)
 
         path = os.path.join(file_path, "weights.pth")

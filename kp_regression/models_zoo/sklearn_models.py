@@ -4,20 +4,20 @@ import typing as T
 from abc import abstractmethod
 from dataclasses import dataclass
 
-from joblib import dump, load  # type: ignore
+from joblib import dump, load
 from numpy import concatenate, ndarray
 from numpy.typing import NDArray
-from sklearn.base import BaseEstimator  # type: ignore
-from sklearn.exceptions import NotFittedError  # type: ignore
-from sklearn.model_selection import (  # type: ignore
+from sklearn.base import BaseEstimator
+from sklearn.exceptions import NotFittedError
+from sklearn.model_selection import (
     GridSearchCV,
     KFold,
     RandomizedSearchCV,
     TimeSeriesSplit,
     train_test_split,
 )
-from sklearn.multioutput import MultiOutputRegressor  # type: ignore
-from sklearn.utils.validation import check_is_fitted  # type: ignore
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.utils.validation import check_is_fitted
 
 from kp_regression.base_model import BaseModel
 from kp_regression.data_pipe import Dataset
@@ -25,7 +25,6 @@ from kp_regression.utils import dump_json, safe_mkdir, serialize_params
 
 
 class SklearnMultiOutputModel(BaseModel):
-
     @abstractmethod
     def get_model(self) -> BaseEstimator: ...
 
@@ -44,7 +43,6 @@ class SklearnMultiOutputModel(BaseModel):
         safe_mkdir(file_path)
 
         for i, model in enumerate(self.multi_model.estimators_):
-
             path = os.path.join(file_path, f"{i}.sav")
             dump(model, path)
 
@@ -57,9 +55,9 @@ class SklearnMultiOutputModel(BaseModel):
         ds_val: Dataset | None = None,
     ):
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
-        assert ds.y is not None and isinstance(
-            ds.y, ndarray
-        ), "For outputs should be present and be numpy"
+        assert ds.y is not None and isinstance(ds.y, ndarray), (
+            "For outputs should be present and be numpy"
+        )
 
         self.multi_model.fit(ds.X, ds.y)
 
@@ -100,10 +98,9 @@ class SklearnMultiOutputModel(BaseModel):
         logging.info("Rebuilding...")
         self.build()
 
-    def load(self, dirpath: str) -> None:
-
-        paths = [os.path.join(dirpath, f"{i}.sav") for i in range(self.output_shape[0])]
-        models = map(load, paths)
+    def load(self, path: str) -> None:
+        paths = [os.path.join(path, f"{i}.sav") for i in range(self.output_shape[0])]
+        models = [load(p) for p in paths]
 
         for i, model in enumerate(models):
             self.multi_model.estimators_[i] = model
@@ -130,12 +127,11 @@ class BoostingValModel(BaseModel):
         ]
 
     def train(self, ds: Dataset, ds_val: Dataset | None = None):
-
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
         assert hasattr(self, "boosting_params"), "Model should be built prior to train"
-        assert ds.y is not None and isinstance(
-            ds.y, ndarray
-        ), "For outputs should be present and be numpy"
+        assert ds.y is not None and isinstance(ds.y, ndarray), (
+            "For outputs should be present and be numpy"
+        )
 
         X, y = ds.X, ds.y
 
@@ -158,27 +154,27 @@ class BoostingValModel(BaseModel):
                 )
             )
 
-            assert (
-                len(split_result) == 4
-            ), "Result of train-test split should contain exactly 4 items"
+            assert len(split_result) == 4, (
+                "Result of train-test split should contain exactly 4 items"
+            )
 
             split_result = T.cast(tuple[NDArray, ...], split_result)
 
             X, X_val, y, y_val = split_result
 
         elif ds_val is not None:
-            assert isinstance(
-                ds_val.X, ndarray
-            ), "For sklearn models dataset X should be Numpy"
-            assert isinstance(
-                ds_val.y, ndarray
-            ), "For sklearn models dataset y should be Numpy"
+            assert isinstance(ds_val.X, ndarray), (
+                "For sklearn models dataset X should be Numpy"
+            )
+            assert isinstance(ds_val.y, ndarray), (
+                "For sklearn models dataset y should be Numpy"
+            )
 
             X_val, y_val = ds_val.X, ds_val.y
 
-            assert isinstance(
-                y_val, ndarray
-            ), "Outputs should be present and be numpy (val set)"
+            assert isinstance(y_val, ndarray), (
+                "Outputs should be present and be numpy (val set)"
+            )
 
         else:
             raise ValueError(
@@ -186,7 +182,6 @@ class BoostingValModel(BaseModel):
             )
 
         for dim_i in range(self.output_shape[0]):
-
             logging.info("Fitting boosting for level %s", dim_i)
 
             params = {}
@@ -226,10 +221,9 @@ class BoostingValModel(BaseModel):
     def cv(self, cv_params: dict[str, T.Any], ds: Dataset):
         raise NotImplementedError("CV not implemented")
 
-    def load(self, dirpath: str) -> None:
-
-        paths = [os.path.join(dirpath, f"{i}.sav") for i in range(self.output_shape[0])]
-        models = map(load, paths)
+    def load(self, path: str) -> None:
+        paths = [os.path.join(path, f"{i}.sav") for i in range(self.output_shape[0])]
+        models = [load(p) for p in paths]
 
         for i, model in enumerate(models):
             self.models[i] = model

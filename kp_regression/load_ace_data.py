@@ -7,12 +7,12 @@ from urllib.parse import urljoin
 import click
 import polars as pl
 import requests
-from bs4 import BeautifulSoup  # type: ignore
-from joblib import Parallel, delayed  # type: ignore
+from bs4 import BeautifulSoup
+from joblib import Parallel, delayed
 from numpy.typing import NDArray
-from pyhdf.HDF import HC, HDF  # type: ignore
-from pyhdf.VS import VD  # type: ignore
-from tqdm import tqdm  # type: ignore
+from pyhdf.HDF import HC, HDF
+from pyhdf.VS import VD
+from tqdm import tqdm
 
 from kp_regression.logging_utils import config_logger
 
@@ -27,7 +27,6 @@ TypeLiteral = T.Literal["ace_br_5min_avg", "ace_br_1hr_avg", "ace_br_1dy_avg"]
 
 
 def decode_bytes_dttm(arr: NDArray | list) -> str:
-
     bytes_string = bytes(arr)
 
     decoded_string = (
@@ -59,7 +58,6 @@ def extract_data_from_hdf(path: str, data_type: TypeLiteral) -> pl.LazyFrame:
 
 
 def load_file(url: str, dirname: str, use_cache: bool) -> str:
-
     fname = url.split("/")[-1]
 
     fpath = os.path.join(dirname, fname)
@@ -81,7 +79,6 @@ def load_file(url: str, dirname: str, use_cache: bool) -> str:
 def process_hdf_file_from_url(
     url: str, dirname: str, data_type: TypeLiteral, use_cache: bool
 ) -> pl.LazyFrame:
-
     fpath = load_file(url=url, dirname=dirname, use_cache=use_cache)
     df = extract_data_from_hdf(fpath, data_type=data_type)
 
@@ -89,7 +86,6 @@ def process_hdf_file_from_url(
 
 
 def process_df(df: pl.LazyFrame) -> pl.LazyFrame:
-
     return df.with_columns(
         pl.col("timestr")
         .map_elements(decode_bytes_dttm, return_dtype=pl.String())
@@ -99,11 +95,9 @@ def process_df(df: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def build_file_list(from_year: int, to_year: int) -> list[str]:
-
     NAME_PATTERN = re.compile(r"ACE\_BROWSE\_(\d+)")
 
     def get_year(fpath: str) -> int:
-
         res = re.match(NAME_PATTERN, fpath.split("/")[-1])
 
         if res is None:
@@ -112,7 +106,6 @@ def build_file_list(from_year: int, to_year: int) -> list[str]:
         return int(res.group(1))
 
     def get_hrefs(url: str) -> list[str]:
-
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for bad status codes
 
@@ -160,7 +153,6 @@ def download_ace_data(
     data_type: str,
     use_cache: bool,
 ) -> None:
-
     if data_type not in DATA_TYPES:
         raise ValueError(
             f"Unknown data: {data_type}, possible data types: {';'.join(DATA_TYPES)}"

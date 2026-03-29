@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 
@@ -53,7 +52,6 @@ def get_conv1d_backbone(
     layers_list: list[nn.Module] = []
 
     for n_outputs in layers:
-
         layers_list.append(
             conv1d_block(
                 n_inputs=n_inputs, n_outputs=n_outputs, kernel_size=kernel_size
@@ -107,7 +105,6 @@ class Conv1DNet3inputs(nn.Module):
 
 
 class Conv1DNet3InputsMulti(LSTM3Inputs):
-
     def build(self) -> None:
         self.torch_model_params = TorchModelParams(**self.model_params)
 
@@ -116,7 +113,7 @@ class Conv1DNet3InputsMulti(LSTM3Inputs):
         assert isinstance(self.shape[0], tuple), "First item in shape must be a tuple"
         assert isinstance(self.shape[1], tuple), "Second item in shape must be a tuple"
         assert isinstance(self.shape[2], tuple), "Third item in shape must be a tuple"
-        
+
         self.models = [
             Conv1DNet3inputs(
                 input_shape1=self.shape[0],

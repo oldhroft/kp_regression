@@ -26,5 +26,5 @@ MODEL_FACTORY: dict[str, type[BaseModel]] = {
     "catboost_regressor_val": CatBoostRegressorValClass,
     "conv1d": Conv1DNet3InputsMulti,
     "lstm": LSTM3Inputs,
-    "lstm_5m": LSTM4Inputs
+    "lstm_5m": LSTM4Inputs,
 }

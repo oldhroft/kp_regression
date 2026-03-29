@@ -1,6 +1,5 @@
-
-from pandas import DataFrame  # type: ignore
-from sklearn.preprocessing import StandardScaler  # type: ignore
+from pandas import DataFrame
+from sklearn.preprocessing import StandardScaler
 
 from kp_regression.data_pipe import Dataset, KpData
 
@@ -41,7 +40,7 @@ class KpMixedLagsSeq(KpData):
             n_targets=n_targets,
             scale=scale,
             scalers=scalers,
-            target=target
+            target=target,
         )
         if is_train:
             self.scalers = scalers

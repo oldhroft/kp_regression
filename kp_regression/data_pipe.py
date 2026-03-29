@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from numpy import savez_compressed
 from numpy.typing import NDArray
-from pandas import DataFrame, read_csv  # type: ignore
+from pandas import DataFrame, read_csv
 
 from kp_regression.utils import dump_json, safe_mkdir
 
@@ -22,7 +22,6 @@ class Dataset:
     shape: tuple
 
     def save(self, path: str, names_only: bool = True) -> None:
-
         safe_mkdir(path)
 
         features_path = os.path.join(path, "features.json")
@@ -40,19 +39,17 @@ class Dataset:
             if self.y is not None:
                 save_args["y"] = self.y
 
-            savez_compressed(out_path, **save_args)  # type: ignore[arg-type]
+            savez_compressed(out_path, **save_args)  # ty: ignore[invalid-argument-type]
 
             meta_path = os.path.join(path, "meta.csv")
-            self.meta.to_csv(meta_path, index=None)
+            self.meta.to_csv(meta_path, index=False)
 
     def log(self, name: str):
-
         y_shape: tuple | None = None
         if self.y is not None:
             y_shape = self.y.shape
 
         if not isinstance(self.X, tuple):
-
             logging.info(
                 "Dataset %s, X shape = %s, y shape = %s", name, self.X.shape, y_shape
             )
@@ -74,7 +71,6 @@ class Dataset:
 
 
 class BaseData(ABC):
-
     def __init__(
         self,
         input_path: str | dict[str, str],
@@ -117,8 +113,7 @@ def read_data(path: str) -> DataFrame:
 
 
 class KpData(BaseData):
-
-    def _read_data(self) -> DataFrame:
+    def _read_data(self) -> None:
         if isinstance(self.input_path, str):
             self.raw_data = read_data(self.input_path)
         else:
@@ -127,10 +122,7 @@ class KpData(BaseData):
     @abstractmethod
     def process_data(self, df: DataFrame, is_train: bool, **kwargs) -> Dataset: ...
 
-    def get_train_test(
-        self, year_test: int, year_val: int
-    ) -> tuple[Dataset, Dataset]:
-
+    def get_train_test(self, year_test: int, year_val: int) -> tuple[Dataset, Dataset]:
         self._read_data()
 
         raw_data_train = self.raw_data[self.raw_data.year < year_test].reset_index(
@@ -159,7 +151,6 @@ class KpData(BaseData):
     def get_train_test_val(
         self, year_test: int, year_val: int
     ) -> tuple[Dataset, Dataset, Dataset]:
-
         self._read_data()
 
         raw_data_train = self.raw_data[self.raw_data.year < year_val].reset_index(
@@ -202,9 +193,7 @@ class KpData5mConfig:
 
 
 class KpData5m(BaseData):
-
     def _read_data(self):
-
         from pandas import read_parquet
 
         if isinstance(self.input_path, dict):
@@ -237,10 +226,7 @@ class KpData5m(BaseData):
         **kwargs,
     ) -> Dataset: ...
 
-    def get_train_test(
-        self, year_test: int, year_val: int
-    ) -> tuple[Dataset, Dataset]:
-
+    def get_train_test(self, year_test: int, year_val: int) -> tuple[Dataset, Dataset]:
         self._read_data()
 
         raw_data_base_train = self.raw_data_base[
@@ -293,7 +279,6 @@ class KpData5m(BaseData):
     def get_train_test_val(
         self, year_test: int, year_val: int
     ) -> tuple[Dataset, Dataset, Dataset]:
-
         self._read_data()
 
         raw_data_train = self.raw_data_base[

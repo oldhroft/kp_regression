@@ -10,7 +10,6 @@ IntTuple = tuple[int, ...]
 
 
 class BaseModel(ABC):
-
     def __init__(
         self,
         shape: IntTuple | tuple[IntTuple, ...],
@@ -19,7 +18,6 @@ class BaseModel(ABC):
         model_params: dict[str, T.Any],
         model_dir: str,
     ) -> None:
-
         self.features = features
         self.model_params = model_params
         self.shape = shape

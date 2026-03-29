@@ -44,7 +44,7 @@ class Config:
         if not isinstance(models, list):
             raise ValueError("Models should be a list of models")
 
-        models_list = list(map(ModelConfig.from_dict, models))
+        models_list = [ModelConfig.from_dict(m) for m in models]
 
         data_config = DataConfig(**cfg_dict["data_config"])
 
