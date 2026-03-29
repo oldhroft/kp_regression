@@ -1,44 +1,47 @@
-[tool.poetry]
+[project]
 name = "kp-regression"
 version = "0.1.0"
 description = ""
-authors = ["Ismail Gadzhiev <ismailgadzhievff@gmail.com>"]
+authors = [{name = "Ismail Gadzhiev", email = "ismailgadzhievff@gmail.com"}]
 readme = "README.md"
-packages = [{include = "kp_regression"}]
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2",
+    "scikit-learn>=1.6",
+    "torch>=2.5",
+    "pytorch-lightning>=2.5",
+    "torchsummary>=1.5.1",
+    "pyyaml>=6.0.1",
+    "openpyxl>=3.1.4",
+    "fastparquet>=2024.5.0",
+    "pyarrow>=16.1.0",
+    "matplotlib>=3.9.0",
+    "lightgbm==4.4.0",
+    "catboost>=1.2.5",
+    "xgboost>=2.0.3",
+    "tqdm>=4.66.4",
+    "seaborn>=0.13.2",
+    "polars>=1.26",
+    "pyhdf>=0.11.6",
+    "types-requests>=2.32.4.20250611",
+    "types-pyyaml>=6.0.12.20250516",
+    "numpy>=2.0",
+    "click>=8.3.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<3.13"
-pandas = "^2.2.2"
-numpy = "1.26.0"
-scikit-learn = "^1.5.0"
-torch = "2.2.0"
-pytorch-lightning = "^2.3.0"
-torchsummary = "^1.5.1"
-pyyaml = "^6.0.1"
-openpyxl = "^3.1.4"
-fastparquet = "^2024.5.0"
-pyarrow = "^16.1.0"
-matplotlib = "^3.9.0"
-lightgbm = "4.4.0"
-catboost = "^1.2.5"
-xgboost = "^2.0.3"
-tqdm = "^4.66.4"
+[project.optional-dependencies]
+dev = [
+    "jupyter>=1.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13",
+    "types-python-dateutil>=2.8",
+]
 
-
-seaborn = "^0.13.2"
-polars = "^1.26.0"
-pyhdf = "^0.11.6"
-types-requests = "^2.32.4.20250611"
-types-pyyaml = "^6.0.12.20250516"
-[tool.poetry.group.dev.dependencies]
-jupyter = "^1.0.0"
-black = "^24.4.2"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
+[project.scripts]
 run = "kp_regression.run_experiment:run"
 loadace_noaa = "kp_regression.load_ace_data_noaa:download_ace_data_run"
 loadace = "kp_regression.load_ace_data:download_ace_data_run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

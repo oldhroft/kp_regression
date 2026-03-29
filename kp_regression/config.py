@@ -1,4 +1,3 @@
-import typing as T
 from dataclasses import dataclass
 
 from kp_regression.utils import load_yaml
@@ -20,7 +19,7 @@ class ModelConfig:
 
 @dataclass
 class DataConfig:
-    input_path: T.Union[str, T.Dict[str, str]]
+    input_path: str | dict[str, str]
     pipe_name: str
     pipe_params: dict
     split_params: dict
@@ -32,7 +31,7 @@ class DataConfig:
 @dataclass
 class Config:
     data_config: DataConfig
-    models: T.List[ModelConfig]
+    models: list[ModelConfig]
 
     @classmethod
     def from_file(cls, file: str):

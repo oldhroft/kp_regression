@@ -1,5 +1,5 @@
 from numpy.typing import NDArray
-from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.base import BaseEstimator, RegressorMixin  # type: ignore[import-untyped]
 
 
 class ColumnEstimator(RegressorMixin, BaseEstimator):

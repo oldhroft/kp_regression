@@ -14,8 +14,8 @@ from kp_regression.utils import dump_json, safe_mkdir
 
 @dataclass
 class Dataset:
-    X: T.Union[NDArray, T.Tuple[NDArray, ...]]
-    y: T.Optional[NDArray]
+    X: NDArray | tuple[NDArray, ...]
+    y: NDArray | None
     feature_names: T.Any
     target_names: T.Any
     meta: DataFrame
@@ -40,14 +40,14 @@ class Dataset:
             if self.y is not None:
                 save_args["y"] = self.y
 
-            savez_compressed(out_path, **save_args)
+            savez_compressed(out_path, **save_args)  # type: ignore[arg-type]
 
             meta_path = os.path.join(path, "meta.csv")
             self.meta.to_csv(meta_path, index=None)
 
     def log(self, name: str):
 
-        y_shape: T.Optional[tuple] = None
+        y_shape: tuple | None = None
         if self.y is not None:
             y_shape = self.y.shape
 
@@ -77,7 +77,7 @@ class BaseData(ABC):
 
     def __init__(
         self,
-        input_path: T.Union[str, T.Dict[str, str]],
+        input_path: str | dict[str, str],
         save_data: bool,
         pipe_params: dict,
         exp_dir: str,
@@ -90,12 +90,12 @@ class BaseData(ABC):
     @abstractmethod
     def get_train_test(
         self, year_test: int, year_val: int
-    ) -> T.Tuple[Dataset, Dataset]: ...
+    ) -> tuple[Dataset, Dataset]: ...
 
     @abstractmethod
     def get_train_test_val(
         self, year_test: int, year_val: int
-    ) -> T.Tuple[Dataset, Dataset, Dataset]: ...
+    ) -> tuple[Dataset, Dataset, Dataset]: ...
 
 
 def read_data(path: str) -> DataFrame:
@@ -129,7 +129,7 @@ class KpData(BaseData):
 
     def get_train_test(
         self, year_test: int, year_val: int
-    ) -> T.Tuple[Dataset, Dataset]:
+    ) -> tuple[Dataset, Dataset]:
 
         self._read_data()
 
@@ -158,7 +158,7 @@ class KpData(BaseData):
 
     def get_train_test_val(
         self, year_test: int, year_val: int
-    ) -> T.Tuple[Dataset, Dataset, Dataset]:
+    ) -> tuple[Dataset, Dataset, Dataset]:
 
         self._read_data()
 
@@ -239,7 +239,7 @@ class KpData5m(BaseData):
 
     def get_train_test(
         self, year_test: int, year_val: int
-    ) -> T.Tuple[Dataset, Dataset]:
+    ) -> tuple[Dataset, Dataset]:
 
         self._read_data()
 
@@ -292,7 +292,7 @@ class KpData5m(BaseData):
 
     def get_train_test_val(
         self, year_test: int, year_val: int
-    ) -> T.Tuple[Dataset, Dataset, Dataset]:
+    ) -> tuple[Dataset, Dataset, Dataset]:
 
         self._read_data()
 

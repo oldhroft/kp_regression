@@ -54,7 +54,7 @@ class SklearnMultiOutputModel(BaseModel):
     def train(
         self,
         ds: Dataset,
-        ds_val: T.Optional[Dataset] = None,
+        ds_val: Dataset | None = None,
     ):
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
         assert ds.y is not None and isinstance(
@@ -67,7 +67,7 @@ class SklearnMultiOutputModel(BaseModel):
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
         return self.multi_model.predict(ds.X)
 
-    def cv(self, cv_params: T.Dict[str, T.Any], ds: Dataset):
+    def cv(self, cv_params: dict[str, T.Any], ds: Dataset):
         """A very hacky type of CV"""
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
 
@@ -113,7 +113,7 @@ class SklearnMultiOutputModel(BaseModel):
 class BoostingEvalConfig:
     model_params: dict
     val_frac: float
-    early_stopping_rounds: T.Optional[int] = None
+    early_stopping_rounds: int | None = None
 
 
 class BoostingValModel(BaseModel):
@@ -129,7 +129,7 @@ class BoostingValModel(BaseModel):
             for i in range(self.output_shape[0])
         ]
 
-    def train(self, ds: Dataset, ds_val: T.Optional[Dataset] = None):
+    def train(self, ds: Dataset, ds_val: Dataset | None = None):
 
         assert isinstance(ds.X, ndarray), "For sklearn models dataset should be Numpy"
         assert hasattr(self, "boosting_params"), "Model should be built prior to train"
@@ -162,7 +162,7 @@ class BoostingValModel(BaseModel):
                 len(split_result) == 4
             ), "Result of train-test split should contain exactly 4 items"
 
-            split_result = T.cast(T.Tuple[NDArray, ...], split_result)
+            split_result = T.cast(tuple[NDArray, ...], split_result)
 
             X, X_val, y, y_val = split_result
 

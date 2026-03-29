@@ -6,17 +6,17 @@ from numpy.typing import NDArray
 from kp_regression.data_pipe import Dataset
 
 
-IntTuple = T.Tuple[int, ...]
+IntTuple = tuple[int, ...]
 
 
 class BaseModel(ABC):
 
     def __init__(
         self,
-        shape: T.Union[IntTuple, T.Tuple[IntTuple, ...]],
-        features: T.Optional[T.List[str]],
+        shape: IntTuple | tuple[IntTuple, ...],
+        features: list[str] | None,
         output_shape: IntTuple,
-        model_params: T.Dict[str, T.Any],
+        model_params: dict[str, T.Any],
         model_dir: str,
     ) -> None:
 
@@ -33,7 +33,7 @@ class BaseModel(ABC):
         raise NotImplementedError("Method not implemented")
 
     @abstractmethod
-    def train(self, ds: Dataset, ds_val: T.Optional[Dataset] = None) -> None:
+    def train(self, ds: Dataset, ds_val: Dataset | None = None) -> None:
         raise NotImplementedError("Method not implemented")
 
     @abstractmethod
@@ -45,7 +45,7 @@ class BaseModel(ABC):
         raise NotImplementedError("Method not implemented")
 
     @abstractmethod
-    def cv(self, cv_params: T.Dict[str, T.Any], ds: Dataset):
+    def cv(self, cv_params: dict[str, T.Any], ds: Dataset):
         raise NotImplementedError("Method not implemented")
 
     @abstractmethod

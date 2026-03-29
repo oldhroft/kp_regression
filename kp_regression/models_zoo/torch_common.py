@@ -54,7 +54,7 @@ class TrainingModule(LightningModule):
         return loss
 
     def validation_step(
-        self, batch: T.Tuple[Tensor, Tensor], batch_idx: T.Any
+        self, batch: tuple[Tensor, Tensor], batch_idx: T.Any
     ) -> Tensor:
         x, y = batch
         y_pred: Tensor = self.model(x)
@@ -85,7 +85,6 @@ class TrainingModule(LightningModule):
             mode="min",
             factor=self.lr_reduce_factor,
             patience=self.lr_reduce_patience,
-            verbose=True,
         )
 
         lr_dict = {
@@ -123,7 +122,7 @@ class TrainingModuleNInputs(LightningModule):
         self.lr_reduce_patience = lr_reduce_patience
         self.loss = nn.MSELoss()
 
-    def training_step(self, batch: T.Tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
+    def training_step(self, batch: tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
         *inputs, y = batch
         if len(inputs) != self.n_inputs:
             raise ValueError(f"Expected {self.n_inputs} inputs, got {len(inputs)}")
@@ -134,7 +133,7 @@ class TrainingModuleNInputs(LightningModule):
         self.log_dict(metrics, on_step=False, on_epoch=True, logger=True)
         return loss
 
-    def validation_step(self, batch: T.Tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
+    def validation_step(self, batch: tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
         *inputs, y = batch
         if len(inputs) != self.n_inputs:
             raise ValueError(f"Expected {self.n_inputs} inputs, got {len(inputs)}")
@@ -146,7 +145,7 @@ class TrainingModuleNInputs(LightningModule):
         self.log("learning_rate", lr, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 
-    def predict_step(self, batch: T.Tuple[Tensor, ...], batch_idx, dataloader_idx=0):
+    def predict_step(self, batch: tuple[Tensor, ...], batch_idx, dataloader_idx=0):
         inputs = batch[: self.n_inputs]
         return self.model(*inputs)
 
@@ -160,7 +159,6 @@ class TrainingModuleNInputs(LightningModule):
             mode="min",
             factor=self.lr_reduce_factor,
             patience=self.lr_reduce_patience,
-            verbose=True,
         )
         lr_dict = {
             "scheduler": lr_scheduler,
@@ -173,7 +171,7 @@ class TrainingModuleNInputs(LightningModule):
 
 def get_dataloader_from_dataset(
     X: NDArray,
-    y: T.Optional[NDArray],
+    y: NDArray | None,
     shuffle: bool,
     batch_size: int,
 ) -> DataLoader:
@@ -191,7 +189,7 @@ def get_dataloader_from_dataset(
 
 
 def get_dataloader_from_dataset_tuple(
-    data: T.Tuple[NDArray, ...], shuffle: bool, batch_size: int
+    data: tuple[NDArray, ...], shuffle: bool, batch_size: int
 ) -> DataLoader:
     tensor_list = [from_numpy(x.astype("float32")) for x in list(data)]
     ds = TensorDataset(*tensor_list)
@@ -201,7 +199,7 @@ def get_dataloader_from_dataset_tuple(
 
 def build_callbacks(
     folder: str, cfg: TorchModelParams
-) -> T.Tuple[ModelCheckpoint, EarlyStopping]:
+) -> tuple[ModelCheckpoint, EarlyStopping]:
 
     safe_mkdir(folder)
 

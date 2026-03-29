@@ -1,4 +1,3 @@
-import typing as T
 from pandas import DataFrame, concat  # type: ignore
 from sklearn.preprocessing import StandardScaler  # type: ignore
 from kp_regression.data_pipe import Dataset
@@ -9,12 +8,13 @@ def process_data_standard(
     data: DataFrame,
     lags_kp: int,
     lags_h: int,
-    features_h: T.List[str],
-    features_other: T.List[str],
+    features_h: list[str],
+    features_other: list[str],
     n_targets: int,
-    diff_features: T.List[str],
+    diff_features: list[str],
     diff_kp: bool,
-    hour_type: T.Optional[str] = None,
+    hour_type: str | None = None,
+    target: str = "Kp",
 ) -> Dataset:
     if hour_type is not None and hour_type not in ("T0", "T1", "T2"):
         raise ValueError(f"Unknown hour type {hour_type}")
@@ -31,7 +31,7 @@ def process_data_standard(
     data["Kp"] = data["Kp*10"]
     flgs = ["t0_flg", "t1_flg", "t2_flg"]
     base_df = data[features_h + features_other + flgs + meta_cols].ffill()
-    diff_features_list: T.List[str] = []
+    diff_features_list: list[str] = []
     if len(diff_features) > 0:
         base_df, diff_features_list = add_diffs(
             base_df, subset=diff_features, lags=1, trim=True, suffix_name="diff"
@@ -44,7 +44,7 @@ def process_data_standard(
         trim=True,
     )
     kp_list = ["Kp"]
-    kp_diff_features: T.List[str] = []
+    kp_diff_features: list[str] = []
     data_lagged_3h_t0 = data.loc[data.t0_flg, ["dttm", "Kp"]]
     if diff_kp:
         data_lagged_3h_t0, kp_diff_features = add_diffs(
@@ -83,43 +83,53 @@ def process_data_standard(
         .sort_values(by="dttm")
         .reset_index(drop=True)
     )
-    data_target_3h_t0, target_3h = add_lags(
-        data.loc[data.t0_flg, ["dttm", "Kp"]],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h_t1, _ = add_lags(
-        data.loc[data.t1_flg, ["dttm", "Kp"]]
-        .assign(Kp=lambda x: x.Kp.shift(1))
-        .iloc[1:],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h_t2, _ = add_lags(
-        data.loc[data.t2_flg, ["dttm", "Kp"]]
-        .assign(Kp=lambda x: x.Kp.shift())
-        .iloc[1:],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h = (
-        concat(
-            [data_target_3h_t0, data_target_3h_t1, data_target_3h_t2],
-            axis=0,
-            ignore_index=True,
+
+    if target == "Kp":
+        data_target_3h_t0, target_cols = add_lags(
+            data.loc[data.t0_flg, ["dttm", "Kp"]],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
         )
-        .sort_values(by="dttm")
-        .loc[:, ["dttm"] + target_3h]
-        .reset_index(drop=True)
-    )
+        data_target_3h_t1, _ = add_lags(
+            data.loc[data.t1_flg, ["dttm", "Kp"]]
+            .assign(Kp=lambda x: x.Kp.shift(1))
+            .iloc[1:],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+        )
+        data_target_3h_t2, _ = add_lags(
+            data.loc[data.t2_flg, ["dttm", "Kp"]]
+            .assign(Kp=lambda x: x.Kp.shift())
+            .iloc[1:],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+        )
+        data_target = (
+            concat(
+                [data_target_3h_t0, data_target_3h_t1, data_target_3h_t2],
+                axis=0,
+                ignore_index=True,
+            )
+            .sort_values(by="dttm")
+            .reset_index(drop=True)
+        )
+    else:
+        data_target, target_cols = add_lags(
+            data.loc[:, ["dttm", target]],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+            subset=[target],
+        )
+
     result = data_lagged.merge(data_lagged_3h, how="inner", on="dttm").merge(
-        data_target_3h, how="inner", on="dttm"
+        data_target.loc[:, ["dttm"] + target_cols], how="inner", on="dttm"
     )
     if hour_type is not None:
         result = result.loc[result.hour_type == hour_type]
@@ -134,15 +144,14 @@ def process_data_standard(
     )
     return Dataset(
         X=result[result_features].ffill().astype("float64").values,
-        y=result[target_3h].ffill().astype("float64").values,
+        y=result[target_cols].ffill().astype("float64").values,
         meta=result[meta_cols],
         feature_names=result_features,
-        target_names=target_3h,
+        target_names=target_cols,
         shape=(len(result_features),),
     )
 
 
-# --- process_data_sequence ---
 def process_data_sequence(
     data: DataFrame,
     is_train: bool,
@@ -151,9 +160,10 @@ def process_data_sequence(
     features_h: list,
     features_other: list,
     n_targets: int,
-    scalers: T.Tuple[StandardScaler, StandardScaler, StandardScaler],
+    scalers: tuple[StandardScaler, StandardScaler, StandardScaler],
     scale: bool,
-) -> T.Tuple[Dataset, T.Tuple[StandardScaler, StandardScaler, StandardScaler]]:
+    target: str = "Kp",
+) -> tuple[Dataset, tuple[StandardScaler, StandardScaler, StandardScaler]]:
     scaler1, scaler2, scaler3 = scalers
     data = data.copy()
     data["t0_flg"] = (data["hour to"]) % 3 == 0
@@ -213,49 +223,59 @@ def process_data_sequence(
         .sort_values(by="dttm")
         .reset_index(drop=True)
     )
-    data_target_3h_t0, target_3h = add_lags(
-        data.loc[data.t0_flg, ["dttm", "Kp"]],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h_t1, _ = add_lags(
-        data.loc[data.t1_flg, ["dttm", "Kp"]]
-        .assign(Kp=lambda x: x.Kp.shift(1))
-        .iloc[1:],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h_t2, _ = add_lags(
-        data.loc[
-            data.t2_flg,
-            [
-                "dttm",
-                "Kp",
-            ],
-        ]
-        .assign(Kp=lambda x: x.Kp.shift())
-        .iloc[1:],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h = (
-        concat(
-            [data_target_3h_t0, data_target_3h_t1, data_target_3h_t2],
-            axis=0,
-            ignore_index=True,
+
+    if target == "Kp":
+        data_target_3h_t0, target_cols = add_lags(
+            data.loc[data.t0_flg, ["dttm", "Kp"]],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
         )
-        .sort_values(by="dttm")
-        .loc[:, ["dttm"] + target_3h]
-        .reset_index(drop=True)
-    )
+        data_target_3h_t1, _ = add_lags(
+            data.loc[data.t1_flg, ["dttm", "Kp"]]
+            .assign(Kp=lambda x: x.Kp.shift(1))
+            .iloc[1:],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+        )
+        data_target_3h_t2, _ = add_lags(
+            data.loc[
+                data.t2_flg,
+                [
+                    "dttm",
+                    "Kp",
+                ],
+            ]
+            .assign(Kp=lambda x: x.Kp.shift())
+            .iloc[1:],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+        )
+        data_target = (
+            concat(
+                [data_target_3h_t0, data_target_3h_t1, data_target_3h_t2],
+                axis=0,
+                ignore_index=True,
+            )
+            .sort_values(by="dttm")
+            .reset_index(drop=True)
+        )
+    else:
+        data_target, target_cols = add_lags(
+            data.loc[:, ["dttm", target]],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+            subset=[target],
+        )
+
     result = data_lagged.merge(data_lagged_3h, how="inner", on="dttm").merge(
-        data_target_3h, how="inner", on="dttm"
+        data_target.loc[:, ["dttm"] + target_cols], how="inner", on="dttm"
     )
     data_lagged_np = result[features_h_list + features_h].ffill().values
     data_lagged_3h_np = result[features_3h_list + ["Kp"]].ffill().values
@@ -278,10 +298,10 @@ def process_data_sequence(
     result_features = [features_h, ["Kp"]]
     return Dataset(
         X=(data_lagged_seq, data_lagged_3h_seq, data_flg),
-        y=result[target_3h].ffill().astype("float64").values,
+        y=result[target_cols].ffill().astype("float64").values,
         meta=result[meta_cols],
         feature_names=result_features,
-        target_names=target_3h,
+        target_names=target_cols,
         shape=((len(features_h), lags_h + 1), (1, lags_kp + 1), (3,)),
     ), (scaler1, scaler2, scaler3)
 
@@ -297,10 +317,11 @@ def process_data_sequence_5min(
     features_other: list,
     features_5m: list,
     n_targets: int,
-    scalers: T.Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler],
+    scalers: tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler],
     scale: bool,
-) -> T.Tuple[
-    Dataset, T.Tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler]
+    target: str = "Kp",
+) -> tuple[
+    Dataset, tuple[StandardScaler, StandardScaler, StandardScaler, StandardScaler]
 ]:
     scaler1, scaler2, scaler3, scaler4 = scalers
     data = data.copy()
@@ -370,51 +391,61 @@ def process_data_sequence_5min(
         .sort_values(by="dttm")
         .reset_index(drop=True)
     )
-    data_target_3h_t0, target_3h = add_lags(
-        data.loc[data.t0_flg, ["dttm", "Kp"]],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h_t1, _ = add_lags(
-        data.loc[data.t1_flg, ["dttm", "Kp"]]
-        .assign(Kp=lambda x: x.Kp.shift(1))
-        .iloc[1:],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h_t2, _ = add_lags(
-        data.loc[
-            data.t2_flg,
-            [
-                "dttm",
-                "Kp",
-            ],
-        ]
-        .assign(Kp=lambda x: x.Kp.shift())
-        .iloc[1:],
-        subset=["Kp"],
-        lags=n_targets,
-        trim=True,
-        forward=True,
-    )
-    data_target_3h = (
-        concat(
-            [data_target_3h_t0, data_target_3h_t1, data_target_3h_t2],
-            axis=0,
-            ignore_index=True,
+
+    if target == "Kp":
+        data_target_3h_t0, target_cols = add_lags(
+            data.loc[data.t0_flg, ["dttm", "Kp"]],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
         )
-        .sort_values(by="dttm")
-        .loc[:, ["dttm"] + target_3h]
-        .reset_index(drop=True)
-    )
+        data_target_3h_t1, _ = add_lags(
+            data.loc[data.t1_flg, ["dttm", "Kp"]]
+            .assign(Kp=lambda x: x.Kp.shift(1))
+            .iloc[1:],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+        )
+        data_target_3h_t2, _ = add_lags(
+            data.loc[
+                data.t2_flg,
+                [
+                    "dttm",
+                    "Kp",
+                ],
+            ]
+            .assign(Kp=lambda x: x.Kp.shift())
+            .iloc[1:],
+            subset=["Kp"],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+        )
+        data_target = (
+            concat(
+                [data_target_3h_t0, data_target_3h_t1, data_target_3h_t2],
+                axis=0,
+                ignore_index=True,
+            )
+            .sort_values(by="dttm")
+            .reset_index(drop=True)
+        )
+    else:
+        data_target, target_cols = add_lags(
+            data.loc[:, ["dttm", target]],
+            lags=n_targets,
+            trim=True,
+            forward=True,
+            subset=[target],
+        )
+
     intersecting_dttms = (
         data_lagged[["dttm"]]
         .merge(data_lagged_3h[["dttm"]], how="inner", on="dttm")
-        .merge(data_target_3h[["dttm"]], how="inner", on="dttm")
+        .merge(data_target[["dttm"]], how="inner", on="dttm")
     )
     data_lagged_np = (
         intersecting_dttms.merge(data_lagged, how="left", on="dttm")[
@@ -442,8 +473,11 @@ def process_data_sequence_5min(
         .ffill()
         .values
     )
+
     data_target_3h_np = (
-        intersecting_dttms.merge(data_target_3h, how="left", on="dttm")[target_3h]
+        intersecting_dttms.merge(
+            data_target.loc[:, ["dttm"] + target_cols], how="left", on="dttm"
+        )[target_cols]
         .ffill()
         .values.astype("float64")
     )
@@ -474,7 +508,7 @@ def process_data_sequence_5min(
         y=data_target_3h_np,
         meta=meta,
         feature_names=result_features,
-        target_names=target_3h,
+        target_names=target_cols,
         shape=(
             (len(features_h), lags_h + 1),
             (1, lags_kp + 1),

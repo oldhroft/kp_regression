@@ -59,7 +59,7 @@ def add_unique_suffix(name: str, add_date: bool = True, add_uuid: bool = True) -
         return f"{name}_{add_date}"
 
 
-def serialize_params(model: BaseEstimator) -> T.List[dict]:
+def serialize_params(model: BaseEstimator) -> list[dict]:
     result = []
     if isinstance(model, Pipeline):
 

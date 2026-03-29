@@ -26,7 +26,7 @@ DATE_FMT = "%a %b %d %H:%M:%S %Y"
 TypeLiteral = T.Literal["ace_br_5min_avg", "ace_br_1hr_avg", "ace_br_1dy_avg"]
 
 
-def decode_bytes_dttm(arr: T.Union[NDArray, list]) -> str:
+def decode_bytes_dttm(arr: NDArray | list) -> str:
 
     bytes_string = bytes(arr)
 
@@ -98,7 +98,7 @@ def process_df(df: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-def build_file_list(from_year: int, to_year: int) -> T.List[str]:
+def build_file_list(from_year: int, to_year: int) -> list[str]:
 
     NAME_PATTERN = re.compile(r"ACE\_BROWSE\_(\d+)")
 
@@ -111,7 +111,7 @@ def build_file_list(from_year: int, to_year: int) -> T.List[str]:
 
         return int(res.group(1))
 
-    def get_hrefs(url: str) -> T.List[str]:
+    def get_hrefs(url: str) -> list[str]:
 
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for bad status codes
@@ -123,7 +123,7 @@ def build_file_list(from_year: int, to_year: int) -> T.List[str]:
         links = soup.find_all("a", href=True)
 
         # Extract directory names (hrefs ending with '/')
-        return [link["href"] for link in links if link["href"]]
+        return [str(link["href"]) for link in links if link["href"]]
 
     logger.info("Building initial urls list")
     all_urls = get_hrefs(BROWSE_URL)
@@ -177,7 +177,7 @@ def download_ace_data(
     logger.info("Start data loading...")
 
     os.makedirs(output_folder_raw, exist_ok=True)
-    df_list: T.List[pl.LazyFrame] = Parallel(n_jobs=30, backend="threading")(
+    df_list: list[pl.LazyFrame] = Parallel(n_jobs=30, backend="threading")(
         map(
             delayed(
                 lambda x: process_hdf_file_from_url(

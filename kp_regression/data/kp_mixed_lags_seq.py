@@ -1,4 +1,3 @@
-import typing as T
 
 from pandas import DataFrame  # type: ignore
 from sklearn.preprocessing import StandardScaler  # type: ignore
@@ -15,10 +14,11 @@ class KpMixedLagsSeq(KpData):
         is_train: bool,
         lags_kp: int = 0,
         lags_h: int = 0,
-        features_h: T.List[str] = ["Dst"],
-        features_other: T.List[str] = [],
+        features_h: list[str] = ["Dst"],
+        features_other: list[str] = [],
         n_targets: int = 8,
         scale: bool = False,
+        target: str = "Kp",
         **kwargs,
     ) -> Dataset:
         if is_train:
@@ -41,6 +41,7 @@ class KpMixedLagsSeq(KpData):
             n_targets=n_targets,
             scale=scale,
             scalers=scalers,
+            target=target
         )
         if is_train:
             self.scalers = scalers

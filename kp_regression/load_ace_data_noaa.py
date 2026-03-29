@@ -15,7 +15,7 @@ from kp_regression.logging_utils import config_logger
 logger = logging.getLogger()
 
 
-INIT_SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
+INIT_SCHEMA: dict[str, pdt.plt.SchemaDict] = {
     "ace_mag": {
         "year": pl.Int32,
         "month": pl.Int32,
@@ -74,7 +74,7 @@ INIT_SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
     },
 }
 
-SCHEMA: T.Dict[str, pdt.plt.SchemaDict] = {
+SCHEMA: dict[str, pdt.plt.SchemaDict] = {
     "ace_mag": {
         "dttm": pl.Datetime,
         "status": pl.Int16,
@@ -144,7 +144,7 @@ def process_data(
         data.with_columns(
             pl.col("data")
             .str.strip_chars_end(" ")
-            .str.replace_all("\s+", " ")
+            .str.replace_all(r"\s+", " ")
             .str.split(" ")
             .alias("data_list")
         )
@@ -174,7 +174,7 @@ def load_data(path: str, **read_cfg) -> pl.LazyFrame:
 
     try:
         df = pl.read_csv(path, **read_cfg).lazy()
-    except HTTPError as e:
+    except HTTPError:
         logger.info("not found skipping file %s", path)
         df = pl.LazyFrame([], schema=pl.Schema({"data": pl.String}))
     return df
@@ -185,7 +185,7 @@ def get_file_range(
     to_date: str,
     data_type: DataOptions = "ace_swepam",
     freq: FreqOptions = "1h",
-) -> T.List[str]:
+) -> list[str]:
 
     agg_level = AGG_LEVEL[freq]
 
@@ -265,7 +265,7 @@ def download_ace_data(
         len(rng),
     )
 
-    data_lst: T.List[pl.LazyFrame] = Parallel(n_jobs=-1)(
+    data_lst: list[pl.LazyFrame] = Parallel(n_jobs=-1)(
         map(
             lambda x: delayed(load_data)(x, **READ_CFG),
             tqdm(rng),

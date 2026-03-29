@@ -10,10 +10,10 @@ from kp_regression.data_pipe import Dataset
 
 def check_data_and_get_train_val_plain_input(
     ds: Dataset,
-    ds_val: T.Optional[Dataset],
-    val_frac: T.Optional[float],
+    ds_val: Dataset | None,
+    val_frac: float | None,
     error_if_both_absent: bool = False,
-) -> T.Tuple[NDArray, NDArray, T.Optional[NDArray], T.Optional[NDArray]]:
+) -> tuple[NDArray, NDArray, NDArray | None, NDArray | None]:
     """
     Extracts training and validation data arrays from Dataset objects, handling validation splits and type checks.
 
@@ -45,7 +45,7 @@ def check_data_and_get_train_val_plain_input(
             len(split_result) == 4
         ), "Result of train-test split should contain exactly 4 items"
 
-        split_result = T.cast(T.Tuple[NDArray, ...], split_result)
+        split_result = T.cast(tuple[NDArray, ...], split_result)
 
         X, X_val, y, y_val = split_result
 
