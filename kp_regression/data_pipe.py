@@ -97,12 +97,12 @@ class BaseData(ABC):
 
     @abstractmethod
     def get_train_test(
-        self, year_test: int, year_val: int
+        self, year_test: int, year_val: int, train_date_from: str | None = None
     ) -> tuple[Dataset, Dataset]: ...
 
     @abstractmethod
     def get_train_test_val(
-        self, year_test: int, year_val: int
+        self, year_test: int, year_val: int, train_date_from: str | None = None
     ) -> tuple[Dataset, Dataset, Dataset]: ...
 
 
@@ -134,12 +134,16 @@ class KpData(BaseData):
     @abstractmethod
     def process_data(self, df: DataFrame, is_train: bool, **kwargs) -> Dataset: ...
 
-    def get_train_test(self, year_test: int, year_val: int) -> tuple[Dataset, Dataset]:
+    def get_train_test(
+        self, year_test: int, year_val: int, train_date_from: str | None = None
+    ) -> tuple[Dataset, Dataset]:
         self._read_data()
 
-        raw_data_train = self.raw_data[self.raw_data.year < year_test].reset_index(
-            drop=True
-        )
+        mask_train = self.raw_data.year < year_test
+        if train_date_from is not None:
+            mask_train = mask_train & (self.raw_data.dttm >= train_date_from)
+
+        raw_data_train = self.raw_data[mask_train].reset_index(drop=True)
         raw_data_test = self.raw_data[self.raw_data.year >= year_test].reset_index(
             drop=True
         )
@@ -161,13 +165,15 @@ class KpData(BaseData):
         return data_train, data_test
 
     def get_train_test_val(
-        self, year_test: int, year_val: int
+        self, year_test: int, year_val: int, train_date_from: str | None = None
     ) -> tuple[Dataset, Dataset, Dataset]:
         self._read_data()
 
-        raw_data_train = self.raw_data[self.raw_data.year < year_val].reset_index(
-            drop=True
-        )
+        mask_train = self.raw_data.year < year_val
+        if train_date_from is not None:
+            mask_train = mask_train & (self.raw_data.dttm >= train_date_from)
+
+        raw_data_train = self.raw_data[mask_train].reset_index(drop=True)
         raw_data_val = self.raw_data[
             (self.raw_data.year >= year_val) & (self.raw_data.year < year_test)
         ].reset_index(drop=True)
@@ -238,26 +244,37 @@ class KpData5m(BaseData):
         **kwargs,
     ) -> Dataset: ...
 
-    def get_train_test(self, year_test: int, year_val: int) -> tuple[Dataset, Dataset]:
+    def get_train_test(
+        self, year_test: int, year_val: int, train_date_from: str | None = None
+    ) -> tuple[Dataset, Dataset]:
         self._read_data()
 
-        raw_data_base_train = self.raw_data_base[
-            self.raw_data_base.year < year_test
-        ].reset_index(drop=True)
+        mask_base_train = self.raw_data_base.year < year_test
+        mask_5m_train = self.raw_data_5m.year < year_test
+        mask_1h_train = self.raw_data_1h.year < year_test
+
+        if train_date_from is not None:
+            mask_base_train = mask_base_train & (
+                self.raw_data_base.dttm >= train_date_from
+            )
+            mask_5m_train = mask_5m_train & (
+                self.raw_data_5m.dttm >= train_date_from
+            )
+            mask_1h_train = mask_1h_train & (
+                self.raw_data_1h.dttm >= train_date_from
+            )
+
+        raw_data_base_train = self.raw_data_base[mask_base_train].reset_index(drop=True)
         raw_data_base_test = self.raw_data_base[
             self.raw_data_base.year >= year_test
         ].reset_index(drop=True)
 
-        raw_data_5m_train = self.raw_data_5m[
-            self.raw_data_5m.year < year_test
-        ].reset_index(drop=True)
+        raw_data_5m_train = self.raw_data_5m[mask_5m_train].reset_index(drop=True)
         raw_data_5m_test = self.raw_data_5m[
             self.raw_data_5m.year >= year_test
         ].reset_index(drop=True)
 
-        raw_data_1h_train = self.raw_data_1h[
-            self.raw_data_1h.year < year_test
-        ].reset_index(drop=True)
+        raw_data_1h_train = self.raw_data_1h[mask_1h_train].reset_index(drop=True)
         raw_data_1h_test = self.raw_data_1h[
             self.raw_data_1h.year >= year_test
         ].reset_index(drop=True)
@@ -289,13 +306,15 @@ class KpData5m(BaseData):
         return data_train, data_test
 
     def get_train_test_val(
-        self, year_test: int, year_val: int
+        self, year_test: int, year_val: int, train_date_from: str | None = None
     ) -> tuple[Dataset, Dataset, Dataset]:
         self._read_data()
 
-        raw_data_train = self.raw_data_base[
-            self.raw_data_base.year < year_val
-        ].reset_index(drop=True)
+        mask_train = self.raw_data_base.year < year_val
+        if train_date_from is not None:
+            mask_train = mask_train & (self.raw_data_base.dttm >= train_date_from)
+
+        raw_data_train = self.raw_data_base[mask_train].reset_index(drop=True)
         raw_data_val = self.raw_data_base[
             (self.raw_data_base.year >= year_val)
             & (self.raw_data_base.year < year_test)
@@ -304,9 +323,17 @@ class KpData5m(BaseData):
             (self.raw_data_base.year >= year_test)
         ].reset_index(drop=True)
 
-        raw_data_5m_train = self.raw_data_5m[
-            self.raw_data_5m.year < year_test
-        ].reset_index(drop=True)
+        mask_5m_train = self.raw_data_5m.year < year_val
+        mask_1h_train = self.raw_data_1h.year < year_val
+        if train_date_from is not None:
+            mask_5m_train = mask_5m_train & (
+                self.raw_data_5m.dttm >= train_date_from
+            )
+            mask_1h_train = mask_1h_train & (
+                self.raw_data_1h.dttm >= train_date_from
+            )
+
+        raw_data_5m_train = self.raw_data_5m[mask_5m_train].reset_index(drop=True)
         raw_data_5m_val = self.raw_data_5m[
             (self.raw_data_5m.year >= year_val) & (self.raw_data_5m.year < year_test)
         ].reset_index(drop=True)
@@ -314,9 +341,7 @@ class KpData5m(BaseData):
             self.raw_data_5m.year >= year_test
         ].reset_index(drop=True)
 
-        raw_data_1h_train = self.raw_data_1h[
-            self.raw_data_1h.year < year_val
-        ].reset_index(drop=True)
+        raw_data_1h_train = self.raw_data_1h[mask_1h_train].reset_index(drop=True)
         raw_data_1h_val = self.raw_data_1h[
             (self.raw_data_1h.year >= year_val) & (self.raw_data_1h.year < year_test)
         ].reset_index(drop=True)
@@ -442,10 +467,17 @@ class KpData5mWithImages(BaseData):
             self.raw_data_images[mask_img].reset_index(drop=True),
         )
 
-    def get_train_test(self, year_test: int, year_val: int) -> tuple[Dataset, Dataset]:
+    def get_train_test(
+        self, year_test: int, year_val: int, train_date_from: str | None = None
+    ) -> tuple[Dataset, Dataset]:
         self._read_data()
 
         base_tr, d5m_tr, d1h_tr, img_tr = self._split_by_year(None, year_test)
+        if train_date_from is not None:
+            base_tr = base_tr[base_tr.dttm >= train_date_from].reset_index(drop=True)
+            d5m_tr = d5m_tr[d5m_tr.dttm >= train_date_from].reset_index(drop=True)
+            d1h_tr = d1h_tr[d1h_tr.dttm >= train_date_from].reset_index(drop=True)
+            img_tr = img_tr[img_tr.dttm >= train_date_from].reset_index(drop=True)
         base_te, d5m_te, d1h_te, img_te = self._split_by_year(year_test, None)
 
         data_train = self.process_data(
@@ -467,11 +499,16 @@ class KpData5mWithImages(BaseData):
         return data_train, data_test
 
     def get_train_test_val(
-        self, year_test: int, year_val: int
+        self, year_test: int, year_val: int, train_date_from: str | None = None
     ) -> tuple[Dataset, Dataset, Dataset]:
         self._read_data()
 
         base_tr, d5m_tr, d1h_tr, img_tr = self._split_by_year(None, year_val)
+        if train_date_from is not None:
+            base_tr = base_tr[base_tr.dttm >= train_date_from].reset_index(drop=True)
+            d5m_tr = d5m_tr[d5m_tr.dttm >= train_date_from].reset_index(drop=True)
+            d1h_tr = d1h_tr[d1h_tr.dttm >= train_date_from].reset_index(drop=True)
+            img_tr = img_tr[img_tr.dttm >= train_date_from].reset_index(drop=True)
         base_val, d5m_val, d1h_val, img_val = self._split_by_year(year_val, year_test)
         base_te, d5m_te, d1h_te, img_te = self._split_by_year(year_test, None)
 
