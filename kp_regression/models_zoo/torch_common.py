@@ -204,3 +204,57 @@ def build_callbacks(
     EarlyStoppingCallback = EarlyStopping(**cfg.early_stopping_cfg)
 
     return TrainingModuleCheckpoint, EarlyStoppingCallback
+
+
+class TrainingModuleImageTabular(LightningModule):
+    def __init__(
+        self,
+        model: nn.Module,
+        lr: float = 0.03,
+        lr_reduce_factor: float = 0.2,
+        lr_reduce_patience: int = 5,
+    ) -> None:
+        super().__init__()
+        self.model = model
+        self.lr = lr
+        self.lr_reduce_factor = lr_reduce_factor
+        self.lr_reduce_patience = lr_reduce_patience
+        self.loss = nn.MSELoss()
+
+    def training_step(self, batch: tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
+        tabular_x, image_seq, y = batch
+        y_pred: Tensor = self.model(tabular_x, image_seq)
+        loss = self.loss(y_pred, y)
+        self.log_dict({"train_loss": loss}, on_step=False, on_epoch=True, logger=True)
+        return loss
+
+    def validation_step(self, batch: tuple[Tensor, ...], batch_idx: T.Any) -> Tensor:
+        tabular_x, image_seq, y = batch
+        y_pred: Tensor = self.model(tabular_x, image_seq)
+        loss = self.loss(y_pred, y)
+        self.log_dict({"val_loss": loss}, on_step=False, on_epoch=True, logger=True)
+        lr = self.trainer.optimizers[0].param_groups[0]["lr"]
+        self.log("learning_rate", lr, on_step=False, on_epoch=True, prog_bar=True)
+        return loss
+
+    def predict_step(
+        self, batch: tuple[Tensor, ...], batch_idx: T.Any, dataloader_idx: int = 0
+    ) -> Tensor:
+        tabular_x, image_seq = batch[0], batch[1]
+        return self.model(tabular_x, image_seq)
+
+    def configure_optimizers(self):
+        optimizer = opt.Adam(self.parameters(), lr=self.lr)
+        lr_scheduler = opt.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=self.lr_reduce_factor,
+            patience=self.lr_reduce_patience,
+        )
+        lr_dict = {
+            "scheduler": lr_scheduler,
+            "interval": "epoch",
+            "frequency": 1,
+            "monitor": "val_loss",
+        }
+        return [optimizer], [lr_dict]

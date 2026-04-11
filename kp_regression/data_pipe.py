@@ -20,6 +20,7 @@ class Dataset:
     target_names: T.Any
     meta: DataFrame
     shape: tuple
+    image_paths: DataFrame | None = None
 
     def save(self, path: str, names_only: bool = True) -> None:
         safe_mkdir(path)
@@ -43,6 +44,10 @@ class Dataset:
 
             meta_path = os.path.join(path, "meta.csv")
             self.meta.to_csv(meta_path, index=False)
+
+            if self.image_paths is not None:
+                image_paths_path = os.path.join(path, "image_paths.csv")
+                self.image_paths.to_csv(image_paths_path, index=False)
 
     def log(self, name: str):
         y_shape: tuple | None = None
@@ -68,6 +73,13 @@ class Dataset:
             self.meta.dttm.dt.date.min(),
             self.meta.dttm.dt.date.max(),
         )
+
+        if self.image_paths is not None:
+            logging.info(
+                "Dataset %s, image_paths shape = %s",
+                name,
+                self.image_paths.shape,
+            )
 
 
 class BaseData(ABC):
@@ -334,6 +346,145 @@ class KpData5m(BaseData):
             raw_data_5m_val,
             is_train=False,
             **self.pipe_params,
+        )
+        data_val.log("Val")
+
+        data_train.save(
+            os.path.join(self.exp_dir, "data_train"), names_only=not self.save_data
+        )
+        data_test.save(
+            os.path.join(self.exp_dir, "data_test"), names_only=not self.save_data
+        )
+        data_val.save(
+            os.path.join(self.exp_dir, "data_val"), names_only=not self.save_data
+        )
+
+        return data_train, data_test, data_val
+
+
+@dataclass
+class KpData5mWithImagesConfig:
+    path_base: str
+    path_5m: str
+    path_1h: str
+    path_images: str
+
+
+class KpData5mWithImages(BaseData):
+    def _read_data(self) -> None:
+        from pandas import Timedelta, read_parquet
+
+        if not isinstance(self.input_path, dict):
+            raise ValueError("Path should be config KpData5mWithImagesConfig")
+
+        path_cfg = KpData5mWithImagesConfig(**self.input_path)
+
+        self.raw_data_base = read_data(path_cfg.path_base)
+        self.raw_data_5m = (
+            read_parquet(path_cfg.path_5m).sort_values(by="dttm").reset_index(drop=True)
+        )
+        self.raw_data_1h = (
+            read_parquet(path_cfg.path_1h).sort_values(by="dttm").reset_index(drop=True)
+        )
+        self.raw_data_images = read_parquet(path_cfg.path_images)
+        self.raw_data_images["dttm"] = self.raw_data_images["datetime"] - Timedelta(
+            hours=1
+        )
+        self.raw_data_images["year"] = self.raw_data_images["dttm"].dt.year
+
+        self.raw_data_5m["year"] = self.raw_data_5m.dttm.dt.year
+        self.raw_data_1h["year"] = self.raw_data_1h.dttm.dt.year
+
+    @abstractmethod
+    def process_data(
+        self,
+        df: DataFrame,
+        df_1h: DataFrame,
+        df_5m: DataFrame,
+        df_images: DataFrame,
+        is_train: bool,
+        **kwargs: T.Any,
+    ) -> Dataset: ...
+
+    def _split_by_year(
+        self, year_from: int | None, year_to: int | None
+    ) -> tuple[DataFrame, DataFrame, DataFrame, DataFrame]:
+        if year_from is not None and year_to is not None:
+            mask_base = (self.raw_data_base.year >= year_from) & (
+                self.raw_data_base.year < year_to
+            )
+            mask_5m = (self.raw_data_5m.year >= year_from) & (
+                self.raw_data_5m.year < year_to
+            )
+            mask_1h = (self.raw_data_1h.year >= year_from) & (
+                self.raw_data_1h.year < year_to
+            )
+            mask_img = (self.raw_data_images.year >= year_from) & (
+                self.raw_data_images.year < year_to
+            )
+        elif year_from is not None:
+            mask_base = self.raw_data_base.year >= year_from
+            mask_5m = self.raw_data_5m.year >= year_from
+            mask_1h = self.raw_data_1h.year >= year_from
+            mask_img = self.raw_data_images.year >= year_from
+        elif year_to is not None:
+            mask_base = self.raw_data_base.year < year_to
+            mask_5m = self.raw_data_5m.year < year_to
+            mask_1h = self.raw_data_1h.year < year_to
+            mask_img = self.raw_data_images.year < year_to
+        else:
+            raise ValueError("At least one of year_from or year_to must be set")
+
+        return (
+            self.raw_data_base[mask_base].reset_index(drop=True),
+            self.raw_data_5m[mask_5m].reset_index(drop=True),
+            self.raw_data_1h[mask_1h].reset_index(drop=True),
+            self.raw_data_images[mask_img].reset_index(drop=True),
+        )
+
+    def get_train_test(self, year_test: int, year_val: int) -> tuple[Dataset, Dataset]:
+        self._read_data()
+
+        base_tr, d5m_tr, d1h_tr, img_tr = self._split_by_year(None, year_test)
+        base_te, d5m_te, d1h_te, img_te = self._split_by_year(year_test, None)
+
+        data_train = self.process_data(
+            base_tr, d1h_tr, d5m_tr, img_tr, is_train=True, **self.pipe_params
+        )
+        data_train.log("Train")
+        data_test = self.process_data(
+            base_te, d1h_te, d5m_te, img_te, is_train=False, **self.pipe_params
+        )
+        data_test.log("Test")
+
+        data_train.save(
+            os.path.join(self.exp_dir, "data_train"), names_only=not self.save_data
+        )
+        data_test.save(
+            os.path.join(self.exp_dir, "data_test"), names_only=not self.save_data
+        )
+
+        return data_train, data_test
+
+    def get_train_test_val(
+        self, year_test: int, year_val: int
+    ) -> tuple[Dataset, Dataset, Dataset]:
+        self._read_data()
+
+        base_tr, d5m_tr, d1h_tr, img_tr = self._split_by_year(None, year_val)
+        base_val, d5m_val, d1h_val, img_val = self._split_by_year(year_val, year_test)
+        base_te, d5m_te, d1h_te, img_te = self._split_by_year(year_test, None)
+
+        data_train = self.process_data(
+            base_tr, d1h_tr, d5m_tr, img_tr, is_train=True, **self.pipe_params
+        )
+        data_train.log("Train")
+        data_test = self.process_data(
+            base_te, d1h_te, d5m_te, img_te, is_train=False, **self.pipe_params
+        )
+        data_test.log("Test")
+        data_val = self.process_data(
+            base_val, d1h_val, d5m_val, img_val, is_train=False, **self.pipe_params
         )
         data_val.log("Val")
 

@@ -9,6 +9,7 @@ dependencies = [
     "pandas>=2.2",
     "scikit-learn>=1.6",
     "torch>=2.5",
+    "torchvision>=0.20",
     "pytorch-lightning>=2.5",
     "torchsummary>=1.5.1",
     "pyyaml>=6.0.1",
