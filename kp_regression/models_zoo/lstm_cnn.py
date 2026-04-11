@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from numpy import concatenate
 from numpy.typing import NDArray
+from pandas import DataFrame
 from pytorch_lightning import Trainer
 from torch import Tensor, save
 from torch.utils.data import DataLoader
@@ -165,15 +166,16 @@ class LSTMCNNImageModel(BaseModel):
 
         logging.info("Built LSTMCNNTabularModel with shape %s", self.shape)
 
-    def _build_path_columns(self) -> list[list[str]]:
+    def _build_path_columns(self, image_paths: DataFrame) -> list[list[str]]:
+        columns = list(image_paths.columns)
         return [
-            [f"{cat}_lag_{lag}" for lag in range(self.n_image_lags)]
+            [c for c in columns if c.startswith(f"{cat}_lag_")]
             for cat in self.image_categories
         ]
 
     def _build_dataloader(self, ds: Dataset, shuffle: bool) -> DataLoader:
         assert ds.image_paths is not None, "Dataset must have image_paths"
-        path_columns = self._build_path_columns()
+        path_columns = self._build_path_columns(ds.image_paths)
 
         dataset = KpImageTabularDataset(
             tabular_x=ds.X if not isinstance(ds.X, tuple) else ds.X[0],
