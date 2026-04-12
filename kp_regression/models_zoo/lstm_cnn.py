@@ -137,7 +137,6 @@ class LSTMCNNImageModel(BaseModel):
         mp = self.torch_model_params.model_params
 
         self.image_categories: list[str] = mp["image_categories"]
-        self.n_image_lags: int = mp["n_image_lags"]
         self.crop: int = mp.get("crop", 25)
         self.img_resize: int = mp.get("img_resize", 128)
 
@@ -167,9 +166,9 @@ class LSTMCNNImageModel(BaseModel):
         logging.info("Built LSTMCNNTabularModel with shape %s", self.shape)
 
     def _build_path_columns(self, image_paths: DataFrame) -> list[list[str]]:
-        columns = list(image_paths.columns)
+        all_columns = list(image_paths.columns)
         return [
-            [c for c in columns if c.startswith(f"{cat}_lag_")]
+            sorted(c for c in all_columns if c.startswith(f"{cat}_lag_"))
             for cat in self.image_categories
         ]
 
@@ -177,13 +176,14 @@ class LSTMCNNImageModel(BaseModel):
         assert ds.image_paths is not None, "Dataset must have image_paths"
         path_columns = self._build_path_columns(ds.image_paths)
 
+        n_image_lags = len(path_columns[0])
         dataset = KpImageTabularDataset(
             tabular_x=ds.X if not isinstance(ds.X, tuple) else ds.X[0],
             image_path_columns=path_columns,
             image_paths_df=ds.image_paths,
             y=ds.y,
             n_categories=len(self.image_categories),
-            n_lags=self.n_image_lags,
+            n_lags=n_image_lags,
             crop=self.crop,
             img_resize=self.img_resize,
         )

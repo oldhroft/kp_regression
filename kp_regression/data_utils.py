@@ -15,6 +15,7 @@ def add_lags(
     subset: str | list[str] | None = None,
     forward: bool = False,
     lags: int = 1,
+    lags_from: int = 0,
     trim: bool = False,
     suffix_name: str | None = None,
     sort_lags: bool = False,
@@ -39,7 +40,7 @@ def add_lags(
     elif lags == 0:
         return x, []
     elif isinstance(subset, list):
-        for i in range(1, lags + 1):
+        for i in range(lags_from + 1, lags + 1):
             lag = -i if forward else i
             index = str(i).zfill(digits)
             column_suffix = f"_{suffix_name}_{index}"
@@ -53,7 +54,7 @@ def add_lags(
             x = x.join(tmp)
 
     elif isinstance(subset, str):
-        for i in range(1, lags + 1):
+        for i in range(lags_from + 1, lags + 1):
             lag = -i if forward else i
             index = str(i).zfill(digits)
             column_name = f"{subset}_{suffix_name}_{index}"

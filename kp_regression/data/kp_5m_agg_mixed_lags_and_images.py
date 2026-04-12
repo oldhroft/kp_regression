@@ -10,7 +10,8 @@ def _prepare_image_columns(
     df_result: DataFrame,
     df_images: DataFrame,
     image_categories: list[str],
-    lags_images: int,
+    lags_from: int,
+    lags_to: int,
 ) -> tuple[DataFrame, list[str]]:
     df_img = df_images[["dttm"] + image_categories].copy()
     df_img = df_img.drop_duplicates(subset="dttm")
@@ -18,15 +19,22 @@ def _prepare_image_columns(
     df_result = df_result.merge(df_img, how="left", on="dttm")
 
     df_result, lag_columns = add_lags(
-        df_result, subset=image_categories, lags=lags_images, suffix_name="lag"
+        df_result,
+        subset=image_categories,
+        lags=lags_to - 1,
+        lags_from=lags_from,
+        suffix_name="lag",
     )
 
-    all_img_columns = [f"{cat}_lag_0" for cat in image_categories] + lag_columns
-    df_result = df_result.rename(
-        columns={cat: f"{cat}_lag_0" for cat in image_categories}
-    )
+    if lags_from == 0:
+        img_columns = [f"{cat}_lag_0" for cat in image_categories] + lag_columns
+        df_result = df_result.rename(
+            columns={cat: f"{cat}_lag_0" for cat in image_categories}
+        )
+    else:
+        img_columns = lag_columns
 
-    return df_result, all_img_columns
+    return df_result, img_columns
 
 
 class Kp5mAggMixedLagsAndImages(KpData5mWithImages):
@@ -52,7 +60,8 @@ class Kp5mAggMixedLagsAndImages(KpData5mWithImages):
         use_5m_values: bool = False,
         target: str = "Kp",
         image_categories: list[str] = ["0193"],
-        lags_images: int = 3,
+        lags_from: int = 0,
+        lags_to: int = 3,
         **kwargs,
     ) -> Dataset:
         from numpy import nan
@@ -107,7 +116,7 @@ class Kp5mAggMixedLagsAndImages(KpData5mWithImages):
         )
 
         df_result, img_columns = _prepare_image_columns(
-            df_result, df_images, image_categories, lags_images
+            df_result, df_images, image_categories, lags_from, lags_to
         )
 
         ds = process_data_standard(
