@@ -1,4 +1,3 @@
-import logging
 import typing as T
 
 import torch
@@ -47,7 +46,6 @@ class KpImageTabularDataset(TorchDataset):
         try:
             img = Image.open(path).convert("RGB")
         except (OSError, SyntaxError):
-            logging.warning("Failed to load image: %s", path)
             return torch.zeros(3, self.img_resize - 2 * self.crop, self.img_resize)
 
         tensor: Tensor = self.transform(img)

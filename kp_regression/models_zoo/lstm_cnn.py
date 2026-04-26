@@ -4,10 +4,12 @@ import typing as T
 
 import torch
 import torch.nn as nn
-from numpy import concatenate
+from joblib import dump, load
+from numpy import concatenate, ndarray
 from numpy.typing import NDArray
 from pandas import DataFrame
 from pytorch_lightning import Trainer
+from sklearn.preprocessing import StandardScaler
 from torch import Tensor, save
 from torch.utils.data import DataLoader
 
@@ -163,6 +165,8 @@ class LSTMCNNImageModel(BaseModel):
             head_layers=mp.get("head_layers"),
         )
 
+        self.scaler = StandardScaler()
+
         logging.info("Built LSTMCNNTabularModel with shape %s", self.shape)
 
     def _build_path_columns(self, image_paths: DataFrame) -> list[list[str]]:
@@ -172,13 +176,21 @@ class LSTMCNNImageModel(BaseModel):
             for cat in self.image_categories
         ]
 
-    def _build_dataloader(self, ds: Dataset, shuffle: bool) -> DataLoader:
+    def _extract_tabular_x(self, ds: Dataset) -> NDArray:
+        assert isinstance(ds.X, ndarray), (
+            f"Expected ndarray tabular X, got {type(ds.X).__name__}"
+        )
+        return ds.X
+
+    def _build_dataloader(
+        self, ds: Dataset, tabular_x: NDArray, shuffle: bool
+    ) -> DataLoader:
         assert ds.image_paths is not None, "Dataset must have image_paths"
         path_columns = self._build_path_columns(ds.image_paths)
 
         n_image_lags = len(path_columns[0])
         dataset = KpImageTabularDataset(
-            tabular_x=ds.X if not isinstance(ds.X, tuple) else ds.X[0],
+            tabular_x=tabular_x,
             image_path_columns=path_columns,
             image_paths_df=ds.image_paths,
             y=ds.y,
@@ -195,12 +207,14 @@ class LSTMCNNImageModel(BaseModel):
         )
 
     def train(self, ds: Dataset, ds_val: Dataset | None = None) -> None:
-        dl_train = self._build_dataloader(ds, shuffle=True)
-        dl_val = (
-            self._build_dataloader(ds_val, shuffle=False)
-            if ds_val is not None
-            else None
-        )
+        tabular_x_train = self.scaler.fit_transform(self._extract_tabular_x(ds))
+        dl_train = self._build_dataloader(ds, tabular_x_train, shuffle=True)
+
+        if ds_val is not None:
+            tabular_x_val = self.scaler.transform(self._extract_tabular_x(ds_val))
+            dl_val = self._build_dataloader(ds_val, tabular_x_val, shuffle=False)
+        else:
+            dl_val = None
 
         checkpoints_folder = os.path.join(self.model_dir, "checkpoints")
         safe_mkdir(checkpoints_folder)
@@ -237,7 +251,8 @@ class LSTMCNNImageModel(BaseModel):
             self.model = restored.model
 
     def predict(self, ds: Dataset) -> NDArray:
-        dl_test = self._build_dataloader(ds, shuffle=False)
+        tabular_x = self.scaler.transform(self._extract_tabular_x(ds))
+        dl_test = self._build_dataloader(ds, tabular_x, shuffle=False)
 
         training_module = TrainingModuleImageTabular(
             self.model, **self.torch_model_params.train_params
@@ -251,10 +266,12 @@ class LSTMCNNImageModel(BaseModel):
         safe_mkdir(file_path)
         path = os.path.join(file_path, "weights.pth")
         save(self.model.state_dict(), path)
+        dump(self.scaler, os.path.join(file_path, "scaler.sav"))
 
     def load(self, path: str) -> None:
         weights_path = os.path.join(path, "weights.pth")
         self.model.load_state_dict(torch.load(weights_path))
+        self.scaler = load(os.path.join(path, "scaler.sav"))
 
     def cv(self, cv_params: dict[str, T.Any], ds: Dataset) -> None:
         raise NotImplementedError("CV not implemented for LSTMCNNImageModel")

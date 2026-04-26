@@ -6,6 +6,10 @@ resolution-markers = [
     "python_full_version < '3.14'",
 ]
 
+[options]
+exclude-newer = "2026-04-19T16:39:35.903079Z"
+exclude-newer-span = "P7D"
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
@@ -1376,6 +1380,12 @@ dev = [
     { name = "types-python-dateutil" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "ipykernel" },
+    { name = "jupyter" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "catboost", specifier = ">=1.2.5" },
@@ -1406,6 +1416,12 @@ requires-dist = [
     { name = "xgboost", specifier = ">=2.0.3" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ipykernel", specifier = ">=7.1.0" },
+    { name = "jupyter", specifier = ">=1.1.1" },
+]
 
 [[package]]
 name = "lark"
