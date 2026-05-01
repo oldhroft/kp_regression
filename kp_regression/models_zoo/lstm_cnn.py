@@ -142,7 +142,7 @@ class LSTMCNNImageModel(BaseModel):
         self.crop: int = mp.get("crop", 25)
         self.img_resize: int = mp.get("img_resize", 128)
 
-        img_h = self.img_resize - 2 * self.crop
+        img_h = self.img_resize
         img_w = self.img_resize
 
         assert isinstance(self.shape, tuple)

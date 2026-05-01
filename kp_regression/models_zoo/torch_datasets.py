@@ -41,16 +41,18 @@ class KpImageTabularDataset(TorchDataset):
 
     def _load_image(self, path: str | None) -> Tensor:
         if path is None or (isinstance(path, float) and path != path):
-            return torch.zeros(3, self.img_resize - 2 * self.crop, self.img_resize)
+            return torch.zeros(3, self.img_resize, self.img_resize)
 
         try:
             img = Image.open(path).convert("RGB")
         except (OSError, SyntaxError):
-            return torch.zeros(3, self.img_resize - 2 * self.crop, self.img_resize)
+            return torch.zeros(3, self.img_resize, self.img_resize)
+
+        if self.crop > 0:
+            w, h = img.size
+            img = img.crop((0, self.crop, w, h - self.crop))
 
         tensor: Tensor = self.transform(img)
-        if self.crop > 0:
-            tensor = tensor[:, self.crop : -self.crop, :]
         return tensor
 
     def __getitem__(self, idx: int) -> tuple[Tensor, ...]:  # ty: ignore[invalid-method-override]
